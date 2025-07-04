@@ -1,131 +1,161 @@
 document.addEventListener('DOMContentLoaded', function () {
-                    // Event listeners para formularios de tareas
-                    document.getElementById('btnCrearTarea').addEventListener('click', () => {
-                        document.getElementById('formEditar').reset();
-                        document.getElementById('tareaId').value = '';
-                        document.getElementById('nombreArchivoActual').textContent = '';
-                        document.getElementById('formEditar').action = '/crear_tarea';
-                    });
+    // Event listeners para formularios de tareas
+    document.getElementById('btnCrearTarea').addEventListener('click', () => {
+        document.getElementById('formEditar').reset();
+        document.getElementById('tareaId').value = '';
+        document.getElementById('nombreArchivoActual').textContent = '';
+        document.getElementById('formEditar').action = '/crear_tarea';
+    });
 
-                    // Script para cargar datos al editar
-                    document.querySelectorAll('.btnEditar').forEach(button => {
-                        button.addEventListener('click', () => {
-                            document.getElementById('formEditar').reset();
-                            document.getElementById('tareaId').value = button.getAttribute('data-id');
-                            document.getElementById('titulo').value = button.getAttribute('data-titulo');
-                            document.getElementById('descripcion').value = button.getAttribute('data-descripcion');
-                            document.getElementById('curso_destino').value = button.getAttribute('data-curso');
-                            document.getElementById('fecha_vencimiento').value = button.getAttribute('data-fecha');
-                            document.getElementById('prioridad').value = button.getAttribute('data-prioridad');
-                            document.getElementById('estado').value = button.getAttribute('data-estado');
-                            document.getElementById('formEditar').action = '/editar_tarea';
-                        });
-                    });
-
-                    const btnProyecto = document.getElementById('proyecto-link');
-                    const btnBackToTasksFromProjects = document.getElementById('btnBackToTasksFromProjects');
-                    const tasksContainer = document.getElementById('tasksContainer');
-                    const studentsContainer = document.getElementById('studentsContainer');
-                    const projectsContainer = document.getElementById('projectsContainer');
-
-                    // Event listener para el botón de refrescar archivos (usando event delegation)
-                    document.addEventListener('click', function(e) {
-                        if (e.target && e.target.id === 'btnRefrescarArchivos') {
-                            // Buscar el ID de la tarea actual desde el modal abierto
-                            const modal = document.getElementById('modalVerDetallesTarea');
-                            if (modal && modal.classList.contains('show')) {
-                                // Obtener el título actual del modal
-                                const modalTitle = document.getElementById('detalleTareaTitle');
-                                if (modalTitle) {
-                                    const titleText = modalTitle.textContent;
-                                    // Buscar el ID de la tarea actual desde los botones
-                                    const tareaActual = Array.from(document.querySelectorAll('.btnVerDetalles')).find(btn => 
-                                        btn.getAttribute('data-titulo') === titleText
-                                    );
-                                    if (tareaActual) {
-                                        cargarArchivosEnviados(tareaActual.getAttribute('data-id'));
-                                    }
-                                }
-                            }
-                        }
-                    });
-
-                    btnProyecto.addEventListener('click', function (e) {
-                        e.preventDefault();
-                        tasksContainer.style.display = 'none';
-                        studentsContainer.style.display = 'none';
-                        projectsContainer.style.display = 'block';
-                    });
-
-                    btnBackToTasksFromProjects.addEventListener('click', function () {
-                        projectsContainer.style.display = 'none';
-                        tasksContainer.style.display = 'block';
-                    });
-                });
-
-                document.addEventListener('DOMContentLoaded', function () {
-        const btnDashboard = document.getElementById('dashboard-link');
-        const btnProyecto = document.getElementById('proyecto-link');
-        const btnBackToTasks = document.getElementById('btnBackToTasks');
-        const btnBackToTasksFromProjects = document.getElementById('btnBackToTasksFromProjects');
-        const tasksContainer = document.getElementById('tasksContainer');
-        const studentsContainer = document.getElementById('studentsContainer');
-        const projectsContainer = document.getElementById('projectsContainer');
-
-        // Sidebar navigation for Tareas
-        btnDashboard.addEventListener('click', function (e) {
-            e.preventDefault();
-            tasksContainer.style.display = 'block';
-            studentsContainer.style.display = 'none';
-            projectsContainer.style.display = 'none';
-        });
-
-        // Sidebar navigation for Proyecto
-        btnProyecto.addEventListener('click', function (e) {
-            e.preventDefault();
-            tasksContainer.style.display = 'none';
-            studentsContainer.style.display = 'none';
-            projectsContainer.style.display = 'block';
-        });
-
-        // Back button from Students to Tareas
-        btnBackToTasks.addEventListener('click', function () {
-            studentsContainer.style.display = 'none';
-            tasksContainer.style.display = 'block';
-            projectsContainer.style.display = 'none';
-        });
-
-        // Back button from Projects to Tareas
-        btnBackToTasksFromProjects.addEventListener('click', function () {
-            projectsContainer.style.display = 'none';
-            tasksContainer.style.display = 'block';
-            studentsContainer.style.display = 'none';
-        });
-
-        // Navigation for each group
-        document.querySelectorAll('.curso-link-sidebar').forEach(function (grupoLink) {
-            grupoLink.addEventListener('click', function (e) {
-                e.preventDefault();
-                const grupoNombre = this.textContent.trim();
-                document.getElementById('studentsCourseTitle').querySelector('span').textContent = grupoNombre;
-                tasksContainer.style.display = 'none';
-                studentsContainer.style.display = 'block';
-                projectsContainer.style.display = 'none';
-                // Aquí podrías llamar a una función para cargar los estudiantes del grupo seleccionado
-            });
+    // Script para cargar datos al editar
+    document.querySelectorAll('.btnEditar').forEach(button => {
+        button.addEventListener('click', () => {
+            document.getElementById('formEditar').reset();
+            document.getElementById('tareaId').value = button.getAttribute('data-id');
+            document.getElementById('titulo').value = button.getAttribute('data-titulo');
+            document.getElementById('descripcion').value = button.getAttribute('data-descripcion');
+            document.getElementById('curso_destino').value = button.getAttribute('data-curso');
+            document.getElementById('fecha_vencimiento').value = button.getAttribute('data-fecha');
+            document.getElementById('prioridad').value = button.getAttribute('data-prioridad');
+            document.getElementById('estado').value = button.getAttribute('data-estado');
+            document.getElementById('formEditar').action = '/editar_tarea';
         });
     });
-    document.getElementById('proyecto-link').addEventListener('click', () => {
+
+    const btnProyecto = document.getElementById('proyecto-link');
+    const btnCalendario = document.getElementById('calendario-link'); // ✅ nuevo
+    const btnBackToTasksFromProjects = document.getElementById('btnBackToTasksFromProjects');
+    const tasksContainer = document.getElementById('tasksContainer');
+    const studentsContainer = document.getElementById('studentsContainer');
+    const projectsContainer = document.getElementById('projectsContainer');
+    const calendarioContainer = document.getElementById('contenido-calendario'); // ✅ nuevo
+
+    // Event listener para el botón de refrescar archivos (usando event delegation)
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.id === 'btnRefrescarArchivos') {
+            const modal = document.getElementById('modalVerDetallesTarea');
+            if (modal && modal.classList.contains('show')) {
+                const modalTitle = document.getElementById('detalleTareaTitle');
+                if (modalTitle) {
+                    const titleText = modalTitle.textContent;
+                    const tareaActual = Array.from(document.querySelectorAll('.btnVerDetalles')).find(btn =>
+                        btn.getAttribute('data-titulo') === titleText
+                    );
+                    if (tareaActual) {
+                        cargarArchivosEnviados(tareaActual.getAttribute('data-id'));
+                    }
+                }
+            }
+        }
+    });
+
+    btnProyecto.addEventListener('click', function (e) {
+        e.preventDefault();
+        tasksContainer.style.display = 'none';
+        studentsContainer.style.display = 'none';
+        projectsContainer.style.display = 'block';
+        calendarioContainer.style.display = 'none'; // ✅ ocultar calendario
+    });
+
+    btnCalendario.addEventListener('click', function (e) { // ✅ nuevo listener
+        e.preventDefault();
+        tasksContainer.style.display = 'none';
+        studentsContainer.style.display = 'none';
+        projectsContainer.style.display = 'none';
+        calendarioContainer.style.display = 'block'; // ✅ mostrar calendario
+        cargarCalendario(); // ✅ si quieres recargar calendario cada vez que entres
+    });
+
+    btnBackToTasksFromProjects.addEventListener('click', function () {
+        projectsContainer.style.display = 'none';
+        tasksContainer.style.display = 'block';
+        calendarioContainer.style.display = 'none'; // ✅ ocultar calendario
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    const btnDashboard = document.getElementById('dashboard-link');
+    const btnProyecto = document.getElementById('proyecto-link');
+    const btnCalendario = document.getElementById('calendario-link'); // ✅ nuevo
+    const btnBackToTasks = document.getElementById('btnBackToTasks');
+    const btnBackToTasksFromProjects = document.getElementById('btnBackToTasksFromProjects');
+    const tasksContainer = document.getElementById('tasksContainer');
+    const studentsContainer = document.getElementById('studentsContainer');
+    const projectsContainer = document.getElementById('projectsContainer');
+    const calendarioContainer = document.getElementById('contenido-calendario'); // ✅ nuevo
+
+    // Sidebar navigation for Tareas
+    btnDashboard.addEventListener('click', function (e) {
+        e.preventDefault();
+        tasksContainer.style.display = 'block';
+        studentsContainer.style.display = 'none';
+        projectsContainer.style.display = 'none';
+        calendarioContainer.style.display = 'none'; // ✅ ocultar calendario
+    });
+
+    // Sidebar navigation for Proyecto
+    btnProyecto.addEventListener('click', function (e) {
+        e.preventDefault();
+        tasksContainer.style.display = 'none';
+        studentsContainer.style.display = 'none';
+        projectsContainer.style.display = 'block';
+        calendarioContainer.style.display = 'none'; // ✅ ocultar calendario
+    });
+
+    // Sidebar navigation for Calendario ✅ nuevo
+    btnCalendario.addEventListener('click', function (e) {
+        e.preventDefault();
+        tasksContainer.style.display = 'none';
+        studentsContainer.style.display = 'none';
+        projectsContainer.style.display = 'none';
+        calendarioContainer.style.display = 'block'; // ✅ mostrar calendario
+        cargarCalendario(); // ✅ si quieres recargar calendario cada vez que entres
+    });
+
+    // Back button from Students to Tareas
+    btnBackToTasks.addEventListener('click', function () {
+        studentsContainer.style.display = 'none';
+        tasksContainer.style.display = 'block';
+        projectsContainer.style.display = 'none';
+        calendarioContainer.style.display = 'none'; // ✅ ocultar calendario
+    });
+
+    // Back button from Projects to Tareas
+    btnBackToTasksFromProjects.addEventListener('click', function () {
+        projectsContainer.style.display = 'none';
+        tasksContainer.style.display = 'block';
+        studentsContainer.style.display = 'none';
+        calendarioContainer.style.display = 'none'; // ✅ ocultar calendario
+    });
+
+    // Navigation for each group
+    document.querySelectorAll('.curso-link-sidebar').forEach(function (grupoLink) {
+        grupoLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            const grupoNombre = this.textContent.trim();
+            document.getElementById('studentsCourseTitle').querySelector('span').textContent = grupoNombre;
+            tasksContainer.style.display = 'none';
+            studentsContainer.style.display = 'block';
+            projectsContainer.style.display = 'none';
+            calendarioContainer.style.display = 'none'; // ✅ ocultar calendario
+        });
+    });
+});
+
+document.getElementById('proyecto-link').addEventListener('click', () => {
     document.getElementById('tasksContainer').style.display = 'none';
     document.getElementById('studentsContainer').style.display = 'none';
     document.getElementById('projectsContainer').style.display = 'block';
+    document.getElementById('contenido-calendario').style.display = 'none'; // ✅ ocultar calendario
 });
 
 document.getElementById('btnBackToTasksFromProjects').addEventListener('click', () => {
     document.getElementById('tasksContainer').style.display = 'block';
     document.getElementById('studentsContainer').style.display = 'none';
     document.getElementById('projectsContainer').style.display = 'none';
+    document.getElementById('contenido-calendario').style.display = 'none'; // ✅ ocultar calendario
 });
+
 
 document.addEventListener('DOMContentLoaded', function () {
     // Notificaciones para el líder
@@ -517,62 +547,3 @@ document.getElementById('btnEditarPerfil').addEventListener('click', function ()
             }
         });
 });
-var calendar; // Variable global
-
-document.addEventListener('DOMContentLoaded', function () {
-    let calendar;
-
-    document.getElementById('calendario-link').addEventListener('click', function () {
-        document.querySelectorAll('.main-container').forEach(el => el.style.display = 'none');
-
-        var calendarioContainer = document.getElementById('calendarioContainer');
-        calendarioContainer.style.display = 'block';
-
-        calendarioContainer.offsetHeight;
-
-        if (calendar) {
-            calendar.destroy();
-        }
-
-        var calendarEl = document.getElementById('calendar');
-
-        setTimeout(function () {
-            calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                locale: 'es',
-                events: '/tareas_json',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                },
-                buttonText: {
-                    today: 'Hoy',
-                    month: 'Mes',
-                    week: 'Semana',
-                    day: 'Día'
-                },
-                eventClick: function (info) {
-                    alert('Tarea: ' + info.event.title + '\nFecha: ' + info.event.start.toISOString().split('T')[0]);
-                }
-            });
-
-            calendar.render();
-        }, 10);
-    });
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

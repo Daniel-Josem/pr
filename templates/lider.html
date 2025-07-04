@@ -41,7 +41,8 @@
                         <i class="bi bi-calendar-event me-2"></i> <span>Calendario</span>
                     </a>
                 </li>
-                <li class="nav-item mb-2">
+
+                 <li class="nav-item mb-2">
                     <a href="#" class="nav-link text-white curso-link-sidebar">
                         <i class="bi bi-people me-2"></i> <span>Mi Grupo</span>
                     </a>
@@ -464,15 +465,33 @@
                 </div>
             </div>
             </div>
-           <div class="calendar">
-    <div class="calendar__header">
-        <button id="btn-prev" class="calendar__nav-btn">&lt;</button>
-        <div id="calendar-date" class="calendar__date"></div>
-        <button id="btn-next" class="calendar__nav-btn">&gt;</button>
-    </div>
-    <ul class="calendar__days" id="calendar-days"></ul>
-    <div id="tooltip-evento" class="tooltip-evento"></div>
-</div>
+           <main class="p-4 seccion" id="contenido-calendario" style="display: none;">
+        <section class="calendar d-flex flex-column flex-grow-1" style="min-height:0;">
+          <header class="calendar__header d-flex align-items-center justify-content-center mb-3">
+            <button id="btn-prev" class="calendar__button"><i class="bi bi-chevron-left"></i></button>
+            <h3 class="text-white mx-3 mb-0" id="calendar-date"></h3>
+            <button id="btn-next" class="calendar__button"><i class="bi bi-chevron-right"></i></button>
+          </header>
+          <section class="calendar__weekdays">
+            <div class="calendar__weekday">Lun</div>
+            <div class="calendar__weekday">Mar</div>
+            <div class="calendar__weekday">Mié</div>
+            <div class="calendar__weekday">Jue</div>
+            <div class="calendar__weekday">Vie</div>
+            <div class="calendar__weekday">Sáb</div>
+            <div class="calendar__weekday">Dom</div>
+          </section>
+          <ol class="calendar__days flex-grow-1" id="calendar-days" style="min-height:0;overflow-y:auto;"></ol>
+          <div id="tooltip-evento"></div>
+        </section>
+        <style>
+          /* Asegura que el calendario y sus hijos llenen el espacio y no causen scroll innecesario */
+          #contenido-calendario > .calendar,
+          #contenido-calendario > .calendar > .calendar__days {
+            flex: 1 1 auto;
+            min-height: 0;
+          }
+        </style>
 
 
 </div> <!-- Cierre del contenedor principal -->

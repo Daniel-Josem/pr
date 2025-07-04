@@ -466,50 +466,6 @@ def actualizar_perfil_lider():
 
     return redirect(url_for('lider.lideres'))
 
-@lider.route('/tareas_json')
-def tareas_json():
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
-
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
-
-    grupo_lider = session.get('grupo')
-    print(f'Grupo del líder: {grupo_lider}')  # Debug
-
-    tareas = conn.execute('SELECT id, titulo, fecha_vencimiento FROM tareas WHERE LOWER(curso_destino) = LOWER(?)', (grupo_lider,)).fetchall()
-    conn.close()
-
-    print(f'Tareas encontradas: {len(tareas)}')  # Debug
-
-    eventos = []
-    for tarea in tareas:
-        if tarea['fecha_vencimiento']:  # Validar que la fecha exista
-            eventos.append({
-                'id': tarea['id'],
-                'title': tarea['titulo'],
-                'start': tarea['fecha_vencimiento']
-            })
-
-    print(f'Eventos enviados: {eventos}')  # Debug
-
-    return jsonify(eventos)
-
-@lider.route('/calendario_lider')
-def calendario_lider():
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
-
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
-
-    grupo_lider = session.get('grupo')
-    tareas = conn.execute('SELECT titulo, descripcion, fecha_vencimiento, prioridad, estado FROM tareas WHERE LOWER(curso_destino) = LOWER(?)', (grupo_lider,)).fetchall()
-    conn.close()
-
-    tareas_json = [dict(t) for t in tareas]
-
-    return render_template('lider.html', tareas_json=tareas_json)
 
 
 

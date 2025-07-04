@@ -102,24 +102,39 @@ def lideres():
     grupo_lider = session.get('grupo')
     nombre_lider = session.get('usuario')
 
-    # Tareas solo del grupo del líder (ignorando mayúsculas y minúsculas)
+    # Tareas solo del grupo del líder
     tareas = conn.execute('SELECT * FROM tareas WHERE LOWER(curso_destino) = LOWER(?)', (grupo_lider,)).fetchall()
 
-    # Proyectos solo del grupo del líder (ignorando mayúsculas y minúsculas)
+    # Proyectos solo del grupo del líder
     proyectos = conn.execute('SELECT * FROM Proyecto WHERE LOWER(grupo) = LOWER(?)', (grupo_lider,)).fetchall()
 
-    # Solo usuarios del grupo del líder (ignorando mayúsculas y minúsculas)
+    # Solo usuarios del grupo con rol 'trabajador'
     usuarios_por_grupo = {grupo_lider: []}
-    usuarios = conn.execute('SELECT nombre_completo, nombre_usuario, correo, grupo FROM Usuario WHERE LOWER(grupo) = LOWER(?)', (grupo_lider,)).fetchall()
+    usuarios = conn.execute('SELECT nombre_completo, nombre_usuario, correo, grupo, rol FROM Usuario WHERE LOWER(grupo) = LOWER(?)', (grupo_lider,)).fetchall()
+
     for usuario in usuarios:
-        usuarios_por_grupo[grupo_lider].append(usuario)
+        if usuario['rol'].lower().strip() == 'trabajador':
+            usuarios_por_grupo[grupo_lider].append(usuario)
+
+    # 🔔 Contar solo notificaciones no leídas del grupo
+    notificaciones = conn.execute('''
+        SELECT COUNT(*) AS cantidad
+        FROM notificaciones n
+        JOIN Usuario u ON n.id_usuario = u.id
+        WHERE LOWER(u.grupo) = LOWER(?) AND n.leido = 0
+    ''', (grupo_lider,)).fetchone()
+
+    cantidad_notificaciones = notificaciones['cantidad']
 
     conn.close()
 
-    return render_template('lider.html', tareas=tareas, proyectos=proyectos, usuarios_por_grupo=usuarios_por_grupo, nombre_usuario=nombre_lider)
-
-
-
+    return render_template('lider.html',
+                           tareas=tareas,
+                           proyectos=proyectos,
+                           usuarios_por_grupo=usuarios_por_grupo,
+                           nombre_usuario=nombre_lider,
+                           grupo_lider=grupo_lider,
+                           cantidad_notificaciones=cantidad_notificaciones)
 
 # Editar tarea
 @lider.route('/editar_tarea', methods=['POST'])
@@ -450,6 +465,53 @@ def actualizar_perfil_lider():
     conn.close()
 
     return redirect(url_for('lider.lideres'))
+
+@lider.route('/tareas_json')
+def tareas_json():
+    if 'usuario' not in session:
+        return redirect(url_for('login.login'))
+
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn.row_factory = sqlite3.Row
+
+    grupo_lider = session.get('grupo')
+    print(f'Grupo del líder: {grupo_lider}')  # Debug
+
+    tareas = conn.execute('SELECT id, titulo, fecha_vencimiento FROM tareas WHERE LOWER(curso_destino) = LOWER(?)', (grupo_lider,)).fetchall()
+    conn.close()
+
+    print(f'Tareas encontradas: {len(tareas)}')  # Debug
+
+    eventos = []
+    for tarea in tareas:
+        if tarea['fecha_vencimiento']:  # Validar que la fecha exista
+            eventos.append({
+                'id': tarea['id'],
+                'title': tarea['titulo'],
+                'start': tarea['fecha_vencimiento']
+            })
+
+    print(f'Eventos enviados: {eventos}')  # Debug
+
+    return jsonify(eventos)
+
+@lider.route('/calendario_lider')
+def calendario_lider():
+    if 'usuario' not in session:
+        return redirect(url_for('login.login'))
+
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn.row_factory = sqlite3.Row
+
+    grupo_lider = session.get('grupo')
+    tareas = conn.execute('SELECT titulo, descripcion, fecha_vencimiento, prioridad, estado FROM tareas WHERE LOWER(curso_destino) = LOWER(?)', (grupo_lider,)).fetchall()
+    conn.close()
+
+    tareas_json = [dict(t) for t in tareas]
+
+    return render_template('lider.html', tareas_json=tareas_json)
+
+
 
 
 

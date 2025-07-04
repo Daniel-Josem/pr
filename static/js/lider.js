@@ -517,6 +517,59 @@ document.getElementById('btnEditarPerfil').addEventListener('click', function ()
             }
         });
 });
+var calendar; // Variable global
+
+document.addEventListener('DOMContentLoaded', function () {
+    let calendar;
+
+    document.getElementById('calendario-link').addEventListener('click', function () {
+        document.querySelectorAll('.main-container').forEach(el => el.style.display = 'none');
+
+        var calendarioContainer = document.getElementById('calendarioContainer');
+        calendarioContainer.style.display = 'block';
+
+        calendarioContainer.offsetHeight;
+
+        if (calendar) {
+            calendar.destroy();
+        }
+
+        var calendarEl = document.getElementById('calendar');
+
+        setTimeout(function () {
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                events: '/tareas_json',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                buttonText: {
+                    today: 'Hoy',
+                    month: 'Mes',
+                    week: 'Semana',
+                    day: 'Día'
+                },
+                eventClick: function (info) {
+                    alert('Tarea: ' + info.event.title + '\nFecha: ' + info.event.start.toISOString().split('T')[0]);
+                }
+            });
+
+            calendar.render();
+        }, 10);
+    });
+});
+
+
+
+
+
+
+
+
+
 
 
 

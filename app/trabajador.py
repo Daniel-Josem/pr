@@ -1,9 +1,12 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
+import time
 import sqlite3
 import os
 from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
+import uuid
+from werkzeug.utils import secure_filename
 
 
 
@@ -18,13 +21,36 @@ def trabajador():
     grupo_usuario = session.get('grupo')
     print(f"ID usuario logueado: {usuario_id}, Grupo: '{grupo_usuario}'")
 
+
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
+
+    # Obtener datos de perfil del usuario
+    # Detectar si usuario_id es numérico (ID) o string (nombre_usuario)
+    print('DEBUG usuario_id en sesión:', usuario_id, type(usuario_id))
+    usuario_row = None
+    if usuario_id is not None:
+        try:
+            int_id = int(usuario_id)
+            usuario_row = conn.execute(
+                'SELECT nombre_completo, avatar_url, acerca_de_mi FROM Usuario WHERE id = ?', (int_id,)
+            ).fetchone()
+        except (ValueError, TypeError):
+            usuario_row = conn.execute(
+                'SELECT nombre_completo, avatar_url, acerca_de_mi FROM Usuario WHERE nombre_usuario = ?', (usuario_id,)
+            ).fetchone()
+    if usuario_row:
+        nombre_usuario = usuario_row['nombre_completo'] or 'Usuario'
+        avatar_url = usuario_row['avatar_url'] or '/static/avatars/perfil_predeterminado.png'
+        acerca_de_mi = usuario_row['acerca_de_mi'] or ''
+    else:
+        nombre_usuario = 'Usuario'
+        avatar_url = '/static/avatars/perfil_predeterminado.png'
+        acerca_de_mi = ''
 
     proyecto_row = conn.execute(
         'SELECT proyecto FROM usuario WHERE id = ?', (usuario_id,)
     ).fetchone()
-
     nombre_proyecto = proyecto_row['proyecto'] if proyecto_row else "Sin proyecto asignado"
 
     cursos = conn.execute('SELECT DISTINCT curso_destino FROM tareas').fetchall()
@@ -75,7 +101,11 @@ def trabajador():
         'trabajador.html',
         tareas=tareas_list,
         proyectos=proyectos,
-        nombre_proyecto=nombre_proyecto
+        nombre_proyecto=nombre_proyecto,
+        nombre_usuario=nombre_usuario,
+        avatar_url=avatar_url,
+        acerca_de_mi=acerca_de_mi,
+        now=int(time.time())
     )
 
 def notificar_lider_tarea_completada(tarea_id):
@@ -113,6 +143,7 @@ def notificar_lider_tarea_completada(tarea_id):
 # --- API para marcar tarea como completada ---
 @trabajador_blueprint.route('/api/tarea/completar/<int:tarea_id>', methods=['POST'])
 def completar_tarea(tarea_id):
+
     if 'usuario' not in session:
         return jsonify({'ok': False, 'msg': 'No autorizado'}), 401
     try:
@@ -125,6 +156,67 @@ def completar_tarea(tarea_id):
         return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'ok': False, 'msg': str(e)}), 500
+
+
+# --- API: Actualizar Perfil (nombre, acerca_de_mi, avatar) ---
+
+@trabajador_blueprint.route('/api/actualizar_perfil', methods=['POST'])
+def api_actualizar_perfil():
+    nombre = request.form.get('nombre')
+    acerca_de_mi = request.form.get('descripcion')
+    avatar = request.files.get('avatar')
+    avatar_url = None
+
+    # Obtener usuario actual (ajusta según tu sistema de sesión)
+    usuario_id = session.get('usuario')
+    if not usuario_id:
+        return jsonify({'success': False, 'error': 'No autenticado'}), 401
+
+    # Guardar avatar si se subió
+    if avatar:
+        ext = os.path.splitext(avatar.filename)[1]
+        filename = f"{uuid.uuid4()}{ext}"
+        avatars_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'avatars')
+        os.makedirs(avatars_folder, exist_ok=True)
+        avatar_path = os.path.join(avatars_folder, filename)
+        avatar.save(avatar_path)
+        avatar_url = f"/static/avatars/{filename}"
+
+    # Actualizar en la base de datos
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    cursor = conn.cursor()
+    if nombre:
+        cursor.execute("UPDATE Usuario SET nombre_completo = ? WHERE id = ?", (nombre, usuario_id))
+    if acerca_de_mi is not None:
+        try:
+            cursor.execute("ALTER TABLE Usuario ADD COLUMN acerca_de_mi TEXT")
+        except Exception:
+            pass
+        cursor.execute("UPDATE Usuario SET acerca_de_mi = ? WHERE id = ?", (acerca_de_mi, usuario_id))
+    if avatar_url:
+        try:
+            cursor.execute("ALTER TABLE Usuario ADD COLUMN avatar_url TEXT")
+        except Exception:
+            pass
+        cursor.execute("UPDATE Usuario SET avatar_url = ? WHERE id = ?", (avatar_url, usuario_id))
+    conn.commit()
+
+    # Obtener los datos actualizados de la base de datos
+    usuario_row = cursor.execute(
+        "SELECT nombre_completo, avatar_url, acerca_de_mi FROM Usuario WHERE id = ?", (usuario_id,)
+    ).fetchone()
+    conn.close()
+
+    nombre_actual = usuario_row[0] if usuario_row and usuario_row[0] else nombre or ''
+    avatar_url_actual = usuario_row[1] if usuario_row and usuario_row[1] else '/static/avatars/perfil_predeterminado.png'
+    acerca_de_mi_actual = usuario_row[2] if usuario_row and usuario_row[2] else acerca_de_mi or ''
+
+    return jsonify({
+        'success': True,
+        'nombre': nombre_actual,
+        'acerca_de_mi': acerca_de_mi_actual,
+        'avatar_url': avatar_url_actual
+    })
 
 # --- API para subir archivo a tarea ---
 @trabajador_blueprint.route('/api/tarea/subir-archivo/<int:tarea_id>', methods=['POST'])
@@ -374,6 +466,44 @@ def api_notificaciones_trabajador():
     notificaciones = conn.execute('SELECT * FROM notificaciones WHERE id_usuario = ? ORDER BY id DESC', (usuario_id,)).fetchall()
     conn.close()
     return jsonify({'ok': True, 'notificaciones': [dict(n) for n in notificaciones]})
+
+@trabajador_blueprint.route('/api/actualizar_foto', methods=['POST'])
+def actualizar_foto_trabajador():
+    if 'usuario' not in session:
+        return jsonify({'success': False, 'error': 'No autenticado'}), 401
+
+    file = request.files.get('avatar')
+    descripcion = request.form.get('descripcion')  # <-- obtener el campo descripcion
+    if not file:
+        return jsonify({'success': False, 'error': 'No se envió archivo'}), 400
+
+    filename = secure_filename(file.filename)
+    # Usar uuid para evitar colisiones
+    ext = os.path.splitext(filename)[1]
+    filename = f"{uuid.uuid4()}{ext}"
+    upload_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'uploads')
+    os.makedirs(upload_folder, exist_ok=True)
+    file_path = os.path.join(upload_folder, filename)
+    file.save(file_path)
+
+    usuario_id = session.get('usuario')
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE Usuario SET foto = ? WHERE id = ?", (filename, usuario_id))
+    # Si se envía descripcion, actualizarla también
+    if descripcion is not None:
+        cursor.execute("UPDATE Usuario SET descripcion = ? WHERE id = ?", (descripcion, usuario_id))
+    cursor.execute("SELECT nombre_completo, descripcion FROM Usuario WHERE id = ?", (usuario_id,))
+    row = cursor.fetchone()
+    conn.commit()
+    conn.close()
+
+    session['foto'] = filename
+
+    foto_url = url_for('static', filename='uploads/' + filename) + '?t=' + str(int(os.path.getmtime(file_path)))
+    nombre = row[0] if row else ''
+    acerca_de_mi = row[1] if row else ''
+    return jsonify({'success': True, 'foto_url': foto_url, 'nombre': nombre, 'acerca_de_mi': acerca_de_mi})
 
 
 

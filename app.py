@@ -1,5 +1,7 @@
-from flask import Flask, render_template, session, redirect, url_for, jsonify
+from flask import Flask, render_template, session, redirect, url_for, jsonify, request, current_app
 import sqlite3
+import os
+from werkzeug.utils import secure_filename
 from app.login import login_blueprint
 from app.admin import api_blueprint
 from app.lider import lider
@@ -72,6 +74,20 @@ def crear_tabla_usuario():
     if 'direccion' not in columnas:
         cursor.execute('ALTER TABLE Usuario ADD COLUMN direccion TEXT')
         print("Columna 'direccion' agregada a la tabla Usuario.")
+
+    # Verificar si la columna 'descripcion' ya existe
+    cursor.execute("PRAGMA table_info(Usuario);")
+    columnas = [columna[1] for columna in cursor.fetchall()]
+    if 'descripcion' not in columnas:
+        cursor.execute('ALTER TABLE Usuario ADD COLUMN descripcion TEXT')
+        print("Columna 'descripcion' agregada a la tabla Usuario.")
+
+    # Verificar si la columna 'foto' ya existe
+    cursor.execute("PRAGMA table_info(Usuario);")
+    columnas = [columna[1] for columna in cursor.fetchall()]
+    if 'foto' not in columnas:
+        cursor.execute('ALTER TABLE Usuario ADD COLUMN foto TEXT')
+        print("Columna 'foto' agregada a la tabla Usuario.")
 
   
 # Crear tabla proyectos
@@ -176,3 +192,5 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+

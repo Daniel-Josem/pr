@@ -1,0 +1,215 @@
+/* Estilos movidos desde trabajador.html */
+
+/* Calendario */
+#contenido-calendario > .calendar,
+#contenido-calendario > .calendar > .calendar__days {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Ayuda */
+.ayuda-container-custom {
+  background: linear-gradient(135deg, #f8fff8 0%, #e8f5e8 100%);
+  border-radius: 1.5rem;
+  padding-bottom: 2rem;
+}
+.ayuda-faq-card {
+  background: linear-gradient(120deg, #e3f2fd 80%, #e9f9ee 100%);
+  border-radius: 1.3rem;
+  border-left: 6px solid #19875433;
+}
+.ayuda-soporte-card {
+  background: linear-gradient(120deg, #fff3cd 0%, #f8f9fa 100%);
+  border-radius: 1.3rem;
+  border-left: 6px solid #19875433;
+}
+.ayuda-guias-card {
+  background: linear-gradient(120deg, #e9f9ee 80%, #e3f2fd 100%);
+  border-radius: 1.3rem;
+  border-left: 6px solid #19875433;
+}
+.ayuda-accordion .ayuda-accordion-item {
+  border-radius: 1rem;
+  margin-bottom: 0.7rem;
+  border: none;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(25,135,84,0.08);
+}
+.ayuda-accordion-btn {
+  background: #e9f9ee;
+  color: #198754;
+  font-weight: 600;
+  font-size: 1.08rem;
+  border: none;
+  border-radius: 1rem 1rem 0 0;
+  transition: background 0.2s, color 0.2s;
+}
+.ayuda-accordion-btn:not(.collapsed) {
+  background: #198754;
+  color: #fff;
+}
+.ayuda-accordion-body {
+  background: #f8fff8;
+  color: #222;
+  border-radius: 0 0 1rem 1rem;
+}
+.ayuda-input {
+  border-radius: 0.7rem;
+  border: 1.5px solid #19875433;
+  background: #f8fff8;
+}
+.ayuda-btn-enviar {
+  border-radius: 0.7rem;
+  font-weight: 600;
+  background: linear-gradient(90deg, #198754 60%, #43c59e 100%);
+  border: none;
+  box-shadow: 0 2px 8px rgba(25,135,84,0.08);
+}
+.ayuda-btn-enviar:hover {
+  background: linear-gradient(90deg, #157347 60%, #198754 100%);
+}
+.ayuda-guias-list .ayuda-guia-link {
+  border-radius: 0.7rem;
+  margin-bottom: 0.5rem;
+  background: #f8fff8;
+  color: #198754;
+  font-weight: 500;
+  border: 1.5px solid #19875422;
+  transition: background 0.2s, color 0.2s;
+}
+.ayuda-guias-list .ayuda-guia-link:hover {
+  background: #198754;
+  color: #fff;
+}
+
+/* Modal Editar Perfil */
+.perfil-modal-content {
+  border-radius: 1.3rem;
+  box-shadow: 0 8px 32px rgba(25,135,84,0.18);
+  border: none;
+}
+.perfil-modal-header {
+  border-radius: 1.3rem 1.3rem 0 0;
+  border-bottom: none;
+  background: linear-gradient(90deg, #e3f2fd 60%, #e9f9ee 100%);
+}
+.perfil-modal-body {
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
+}
+.perfil-modal-footer {
+  border-radius: 0 0 1.3rem 1.3rem;
+  border-top: none;
+  background: #f8fff8;
+  padding: 1rem 1.5rem;
+}
+.perfil-input {
+  border-radius: 0.7rem;
+  border: 1.5px solid #19875433;
+  background: #f8fff8;
+  margin-bottom: 0.5rem;
+}
+.perfil-avatar-img {
+  box-shadow: 0 2px 8px rgba(25,135,84,0.10);
+  border: 2.5px solid #19875433;
+  background: #fff;
+}
+.perfil-btn-cancelar {
+  border-radius: 0.7rem;
+  font-weight: 600;
+  background: #e0e0e0;
+  color: #444;
+  border: none;
+  transition: background 0.2s, color 0.2s;
+}
+.perfil-btn-cancelar:hover {
+  background: #bdbdbd;
+  color: #222;
+}
+.perfil-btn-guardar {
+  border-radius: 0.7rem;
+  font-weight: 600;
+  background: linear-gradient(90deg, #198754 60%, #43c59e 100%);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(25,135,84,0.08);
+  transition: background 0.2s, color 0.2s;
+}
+.perfil-btn-guardar:hover:enabled {
+  background: linear-gradient(90deg, #157347 60%, #198754 100%);
+  color: #fff;
+}
+#mensajePerfil {
+  min-height: 1.5em;
+}
+
+/* Chatbox */
+#chatbox-toggle-btn {
+  transition: box-shadow 0.2s, background 0.2s, transform 0.2s;
+}
+#chatbox-toggle-btn:hover {
+  background: #157347;
+  transform: scale(1.08);
+}
+#chatbox {
+  animation: chatbox-fade-in 0.25s cubic-bezier(.4,1.6,.4,1);
+}
+@keyframes chatbox-fade-in {
+  from { opacity: 0; transform: translateY(40px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Sidebar logo (mantener solo estos estilos en el HTML) */
+/*
+.sidebar-logo {
+  width: 60px !important;
+  height: 60px !important;
+  object-fit: contain !important;
+  border-radius: 8px !important;
+}
+.sidebar-logo-wrap {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin-bottom: 0.5rem !important;
+}
+*/
+
+/* Layout principal */
+html, body {
+  height: 100%;
+  min-height: 100%;
+}
+#wrapper {
+  height: 100vh;
+  min-height: 0;
+}
+.main-content {
+  height: 100vh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.main-content > main {
+  display: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.main-content > main.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.main-content > main.active > .container,
+.main-content > main.active > .card,
+.main-content > main.active > section {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+@media (max-width: 600px) {
+  .p-4 {
+    padding: 1rem !important;
+  }
+}

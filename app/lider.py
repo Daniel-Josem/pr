@@ -92,7 +92,7 @@ def crear_tarea():
     return redirect(url_for('lider.lideres'))
 
 # Mostrar tareas
-@lider.route('/lideres')
+@lider.route('/lider')
 @lider_required
 def lideres():
     conn = sqlite3.connect('gestor_de_tareas.db')

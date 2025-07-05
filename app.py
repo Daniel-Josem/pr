@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session, redirect, url_for, jsonify, request, current_app
+from flask import Flask, render_template, session, redirect, url_for, jsonify, request, current_app, flash
 from flask_login import LoginManager, login_required, current_user, logout_user
 import sqlite3
 import os
@@ -20,6 +20,18 @@ login_manager.init_app(app)
 login_manager.login_view = 'login.login'
 login_manager.login_message = 'Por favor, inicia sesión para acceder a esta página.'
 login_manager.login_message_category = 'info'
+
+# Variable para controlar si ya se limpió la sesión
+_session_cleared = False
+
+@app.before_request
+def force_logout_on_startup():
+    """Limpia todas las sesiones al iniciar la aplicación"""
+    global _session_cleared
+    if not _session_cleared:
+        session.clear()
+        _session_cleared = True
+        print("🔒 Sesiones limpiadas al iniciar la aplicación")
 
 @login_manager.user_loader
 def load_user(user_id):

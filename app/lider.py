@@ -1,8 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash,check_password_hash
 import sqlite3
 import os
 from werkzeug.utils import secure_filename
+from app.session_decorators import lider_required
 
 lider = Blueprint('lider', __name__)
 
@@ -38,9 +40,8 @@ def limpiar_archivos_huerfanos():
 
 # Crear tarea
 @lider.route('/crear_tarea', methods=['POST'])
+@lider_required
 def crear_tarea():
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
 
     conn = sqlite3.connect('gestor_de_tareas.db')
     cursor = conn.cursor()
@@ -92,10 +93,8 @@ def crear_tarea():
 
 # Mostrar tareas
 @lider.route('/lideres')
+@lider_required
 def lideres():
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
-
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
 
@@ -138,9 +137,8 @@ def lideres():
 
 # Editar tarea
 @lider.route('/editar_tarea', methods=['POST'])
+@lider_required
 def editar_tarea():
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
 
     id_tarea = request.form['id']
     titulo = request.form['titulo']
@@ -202,9 +200,8 @@ def editar_tarea():
 
 # Eliminar tarea
 @lider.route('/eliminar_tarea/<int:id>', methods=['POST'])
+@lider_required
 def eliminar_tarea(id):
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
 
     conn = sqlite3.connect('gestor_de_tareas.db')
     cursor = conn.cursor()
@@ -231,9 +228,8 @@ def eliminar_tarea(id):
     return redirect(url_for('lider.lideres'))
 
 @lider.route('/crear_proyecto', methods=['POST'])
+@lider_required
 def crear_proyecto():
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
 
     nombre = request.form['nombre']
     descripcion = request.form['descripcion']
@@ -252,9 +248,8 @@ def crear_proyecto():
     return redirect(url_for('lider.lideres'))  # Esto debe estar así para recargar la vista
 
 @lider.route('/eliminar_proyecto/<int:id>', methods=['POST'])
+@lider_required
 def eliminar_proyecto(id):
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
 
     conn = sqlite3.connect('gestor_de_tareas.db')
     cursor = conn.cursor()
@@ -270,9 +265,8 @@ def eliminar_proyecto(id):
     return redirect(url_for('lider.lideres'))
 
 @lider.route('/asignar_tarea_a_proyecto', methods=['POST'])
+@lider_required
 def asignar_tarea_a_proyecto():
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
 
     tarea_id = request.form['tarea_id']
     proyecto_id = request.form['proyecto_id']
@@ -288,9 +282,8 @@ def asignar_tarea_a_proyecto():
     return redirect(url_for('lider.lideres'))
 
 @lider.route('/notificaciones')
+@lider_required
 def ver_notificaciones():
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
     usuario = session['usuario']
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
@@ -309,9 +302,8 @@ def ver_notificaciones():
     return {'notificaciones': [dict(n) for n in notificaciones]}
 
 @lider.route('/notificaciones/marcar_leida', methods=['POST'])
+@lider_required
 def marcar_notificacion_leida():
-    if 'usuario' not in session:
-        return {'success': False, 'error': 'No autenticado'}, 401
     data = request.get_json()
     notificacion_id = data.get('id')
     if not notificacion_id:
@@ -324,9 +316,8 @@ def marcar_notificacion_leida():
     return {'success': True}
 
 @lider.route('/api/tarea/<int:tarea_id>/archivos')
+@lider_required
 def obtener_archivos_tarea(tarea_id):
-    if 'usuario' not in session:
-        return jsonify({'error': 'No autorizado'}), 401
 
     conn = sqlite3.connect('gestor_de_tareas.db')
     cursor = conn.cursor()
@@ -402,9 +393,8 @@ def obtener_archivos_tarea(tarea_id):
         conn.close()
 
 @lider.route('/obtener_perfil_lider')
+@lider_required
 def obtener_perfil_lider():
-    if 'usuario' not in session:
-        return {'success': False}
 
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
@@ -420,9 +410,8 @@ def obtener_perfil_lider():
 
 
 @lider.route('/actualizar_perfil_lider', methods=['POST'])
+@lider_required
 def actualizar_perfil_lider():
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
 
     usuario = request.form['usuario']
     nombre = request.form['nombre']

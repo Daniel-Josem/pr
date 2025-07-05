@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
+from flask_login import login_required, current_user
 import time
 import sqlite3
 import os
@@ -7,15 +8,13 @@ import smtplib
 from email.mime.text import MIMEText
 import uuid
 from werkzeug.utils import secure_filename
-
-
+from app.session_decorators import trabajador_required, api_trabajador_required
 
 trabajador_blueprint = Blueprint('trabajador', __name__)
 
 @trabajador_blueprint.route('/trabajador')
+@trabajador_required
 def trabajador():
-    if 'usuario' not in session:
-        return redirect(url_for('login.login'))
 
     usuario_id = session.get('usuario')
     grupo_usuario = session.get('grupo')
@@ -142,10 +141,8 @@ def notificar_lider_tarea_completada(tarea_id):
 
 # --- API para marcar tarea como completada ---
 @trabajador_blueprint.route('/api/tarea/completar/<int:tarea_id>', methods=['POST'])
+@api_trabajador_required
 def completar_tarea(tarea_id):
-
-    if 'usuario' not in session:
-        return jsonify({'ok': False, 'msg': 'No autorizado'}), 401
     try:
         conn = sqlite3.connect('gestor_de_tareas.db')
         cur = conn.cursor()
@@ -161,13 +158,14 @@ def completar_tarea(tarea_id):
 # --- API: Actualizar Perfil (nombre, acerca_de_mi, avatar) ---
 
 @trabajador_blueprint.route('/api/actualizar_perfil', methods=['POST'])
+@api_trabajador_required
 def api_actualizar_perfil():
     nombre = request.form.get('nombre')
     acerca_de_mi = request.form.get('descripcion')
     avatar = request.files.get('avatar')
     avatar_url = None
 
-    # Obtener usuario actual (ajusta según tu sistema de sesión)
+    # Obtener usuario actual
     usuario_id = session.get('usuario')
     if not usuario_id:
         return jsonify({'success': False, 'error': 'No autenticado'}), 401
@@ -220,9 +218,8 @@ def api_actualizar_perfil():
 
 # --- API para subir archivo a tarea ---
 @trabajador_blueprint.route('/api/tarea/subir-archivo/<int:tarea_id>', methods=['POST'])
+@api_trabajador_required
 def subir_archivo_tarea(tarea_id):
-    if 'usuario' not in session:
-        return jsonify({'ok': False, 'msg': 'No autorizado'}), 401
     if 'archivo' not in request.files:
         return jsonify({'ok': False, 'msg': 'No se envió archivo'}), 400
     archivo = request.files['archivo']
@@ -303,9 +300,8 @@ def subir_archivo_tarea(tarea_id):
 
 # --- API para obtener detalles de tarea ---
 @trabajador_blueprint.route('/api/tarea/<int:tarea_id>')
+@api_trabajador_required
 def api_tarea_detalle(tarea_id):
-    if 'usuario' not in session:
-        return jsonify({'ok': False, 'msg': 'No autorizado'}), 401
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
     tarea = conn.execute('SELECT * FROM tareas WHERE id = ?', (tarea_id,)).fetchone()
@@ -329,9 +325,8 @@ def api_tarea_detalle(tarea_id):
 
 # --- API para obtener todas las tareas del usuario ---
 @trabajador_blueprint.route('/api/tareas')
+@api_trabajador_required
 def api_tareas_usuario():
-    if 'usuario' not in session:
-        return jsonify({'ok': False, 'msg': 'No autorizado'}), 401
     usuario_id = session.get('usuario')
     grupo_usuario = session.get('grupo')
     conn = sqlite3.connect('gestor_de_tareas.db')
@@ -377,9 +372,8 @@ def api_tareas_usuario():
 
 # --- ENDPOINT DE DEPURACIÓN: Verificar archivos en base de datos ---
 @trabajador_blueprint.route('/api/debug/archivos')
+@api_trabajador_required
 def debug_archivos():
-    if 'usuario' not in session:
-        return jsonify({'ok': False, 'msg': 'No autorizado'}), 401
     
     conn = sqlite3.connect('gestor_de_tareas.db')
     cursor = conn.cursor()
@@ -430,9 +424,8 @@ def debug_archivos():
 
 # --- ENDPOINT DE DEPURACIÓN: Listar archivos físicos ---
 @trabajador_blueprint.route('/api/debug/archivos-fisicos')
+@api_trabajador_required
 def debug_archivos_fisicos():
-    if 'usuario' not in session:
-        return jsonify({'ok': False, 'msg': 'No autorizado'}), 401
     
     carpeta = os.path.join('static', 'archivos_tareas')
     archivos_fisicos = []
@@ -457,9 +450,8 @@ def debug_archivos_fisicos():
 
 # --- API para obtener notificaciones del trabajador ---
 @trabajador_blueprint.route('/api/notificaciones')
+@api_trabajador_required
 def api_notificaciones_trabajador():
-    if 'usuario' not in session:
-        return jsonify({'ok': False, 'msg': 'No autorizado'}), 401
     usuario_id = session.get('usuario')
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
@@ -468,10 +460,8 @@ def api_notificaciones_trabajador():
     return jsonify({'ok': True, 'notificaciones': [dict(n) for n in notificaciones]})
 
 @trabajador_blueprint.route('/api/actualizar_foto', methods=['POST'])
+@api_trabajador_required
 def actualizar_foto_trabajador():
-    if 'usuario' not in session:
-        return jsonify({'success': False, 'error': 'No autenticado'}), 401
-
     file = request.files.get('avatar')
     descripcion = request.form.get('descripcion')  # <-- obtener el campo descripcion
     if not file:

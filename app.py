@@ -1,4 +1,5 @@
 from flask import Flask, render_template, session, redirect, url_for, jsonify, request, current_app
+from flask_login import LoginManager, login_required, current_user, logout_user
 import sqlite3
 import os
 from werkzeug.utils import secure_filename
@@ -7,9 +8,25 @@ from app.admin import api_blueprint
 from app.lider import lider
 from app.trabajador import trabajador_blueprint
 from app.recuperar import recuperar_bp
+from app.models import Usuario
+from app.session_decorators import admin_required
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_segura'
+
+# Configurar Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login.login'
+login_manager.login_message = 'Por favor, inicia sesión para acceder a esta página.'
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    print(f"Loading user with ID: {user_id}")  # Debug
+    usuario = Usuario.get(user_id)
+    print(f"User loaded: {usuario}")  # Debug
+    return usuario
 
 # Registrar los Blueprints
 app.register_blueprint(login_blueprint)
@@ -181,13 +198,13 @@ def landing():
     return render_template('landingpage.html')
 
 @app.route('/administrador')
+@admin_required
 def administrador():
     return render_template('admin.html')
 
 @app.route('/logout')
 def logout():
-    session.pop('usuario', None)
-    session.pop('grupo', None)  # Opcional: limpiar también el grupo
+    session.clear()
     return redirect(url_for('landing'))
 
 if __name__ == '__main__':

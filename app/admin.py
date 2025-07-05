@@ -6,6 +6,7 @@ from unidecode import unidecode
 from datetime import datetime
 import sqlite3
 import os
+from app.session_decorators import api_admin_required
 
 api_blueprint = Blueprint('api', __name__)
 
@@ -44,6 +45,7 @@ crear_usuarios_prueba()
 
 #Contador de lideres activos
 @api_blueprint.route('/api/lider/count')
+@api_admin_required
 def api_lider_count():
     conn = get_db_connection()
     cnt = conn.execute('SELECT COUNT(*) FROM Usuario WHERE rol="lider" AND estado="activo"').fetchone()[0]
@@ -52,6 +54,7 @@ def api_lider_count():
 
 #Contador de trabajadores activos
 @api_blueprint.route('/api/trabajadores/count')
+@api_admin_required
 def api_trabajadores_count():
     conn = get_db_connection()
     cnt = conn.execute('SELECT COUNT(*) FROM Usuario WHERE estado="activo" AND rol="trabajador"').fetchone()[0]
@@ -60,6 +63,7 @@ def api_trabajadores_count():
 
 #Contador de proyectos activos
 @api_blueprint.route('/api/proyectos/count')
+@api_admin_required
 def contar_proyectos_activos():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -71,6 +75,7 @@ def contar_proyectos_activos():
 
 # 1. Ruta para registrar un lider
 @api_blueprint.route('/api/lideres/crear', methods=['POST'])
+@api_admin_required
 def registrar_lider():
     data = request.get_json()
 
@@ -136,6 +141,7 @@ def registrar_lider():
     
 # 2. Ruta para inactivar líder
 @api_blueprint.route('/api/lider/inactivar/<int:id>', methods=['POST'])
+@api_admin_required
 def inactivar_lider(id):
     with get_db_connection() as conn:
         conn.execute("UPDATE Usuario SET estado = 'inactivo' WHERE id = ?", (id,))
@@ -144,6 +150,7 @@ def inactivar_lider(id):
 
 # 3. Ruta para obtener los datos de un líder específico (por ID), usada para cargar el formulario de edición
 @api_blueprint.route('/api/lider/<int:id>')
+@api_admin_required
 def obtener_lider(id):
     with get_db_connection() as conn:
         lider = conn.execute("SELECT * FROM Usuario WHERE id = ? AND rol = 'lider'", (id,)).fetchone()
@@ -155,6 +162,7 @@ def obtener_lider(id):
 
 # 4. Ruta para actualizar un lider
 @api_blueprint.route('/api/lider/actualizar', methods=['POST'])
+@api_admin_required
 def actualizar_lider():
     data = request.get_json()
     id = data.get('id')
@@ -181,6 +189,7 @@ def actualizar_lider():
 
 # 5. Ruta para obtener todos los líderes activos
 @api_blueprint.route('/api/lideres')
+@api_admin_required
 def obtener_lideres():
     with get_db_connection() as conn:
         lideres = conn.execute("SELECT * FROM Usuario WHERE rol = 'lider' AND estado = 'activo'").fetchall()
@@ -188,6 +197,7 @@ def obtener_lideres():
 
 # 6.Ruta para obtener todos los trabajadores activos
 @api_blueprint.route('/api/trabajadores')
+@api_admin_required
 def obtener_trabajadores():
     with get_db_connection() as conn:
         trabajadores = conn.execute("SELECT * FROM Usuario WHERE rol = 'trabajador' AND estado = 'activo'").fetchall()
@@ -196,6 +206,7 @@ def obtener_trabajadores():
 
 # 7. Ruta para inactivar trabahadores
 @api_blueprint.route('/api/trabajador/inactivar/<int:id>', methods=['POST'])
+@api_admin_required
 def inactivar_trabajador(id):
     with get_db_connection() as conn:
         conn.execute("UPDATE Usuario SET estado = 'inactivo' WHERE id = ?", (id,))
@@ -204,6 +215,7 @@ def inactivar_trabajador(id):
 
 # 8. Ruta para obtener los datos de un trabajador específico (por ID), usada para cargar el formulario de edición
 @api_blueprint.route('/api/trabajador/<int:id>')
+@api_admin_required
 def obtener_trabajador(id):
     with get_db_connection() as conn:
         trabajador = conn.execute("SELECT * FROM Usuario WHERE id = ? AND rol = 'trabajador' AND estado = 'activo'", (id,)).fetchone()
@@ -216,6 +228,7 @@ def obtener_trabajador(id):
 
 # 9. Ruta para actualizar un trabajador
 @api_blueprint.route('/api/trabajador/actualizar', methods=['POST'])
+@api_admin_required
 def actualizar_trabajador():
     data = request.get_json()
     id = data.get('id')
@@ -242,6 +255,7 @@ def actualizar_trabajador():
 
 # 10.  Ruta para actualizar el perfil del administrador
 @api_blueprint.route('/perfil/actualizar', methods=['POST'])
+@api_admin_required
 def actualizar_perfil():
     nombre = request.form.get('nombre') or session.get('nombre')
     descripcion = request.form.get('descripcion') or session.get('descripcion')
@@ -269,6 +283,7 @@ def actualizar_perfil():
 #11. Ruta para crear un proyecto
 # Crear proyecto
 @api_blueprint.route('/api/proyecto/crear', methods=['POST'])
+@api_admin_required
 def crear_proyecto():
     data = request.get_json()
     nombre = data.get('nombre')
@@ -302,6 +317,7 @@ def crear_proyecto():
 
 # Obtener proyectos activos
 @api_blueprint.route('/api/proyectos', methods=['GET'])
+@api_admin_required
 def obtener_proyectos():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -329,6 +345,7 @@ def obtener_proyectos():
 
 # Inactivar proyecto
 @api_blueprint.route('/api/proyecto/inactivar/<int:id>', methods=['POST'])
+@api_admin_required
 def inactivar_proyecto(id):
     with get_db_connection() as conn:
         conn.execute("UPDATE Proyecto SET estado = 'inactivo' WHERE id = ?", (id,))
@@ -337,6 +354,7 @@ def inactivar_proyecto(id):
 
 #Editar proyecto
 @api_blueprint.route('/api/proyecto/editar/<int:id>', methods=['POST'])
+@api_admin_required
 def editar_proyecto(id):
     data = request.get_json()
     with get_db_connection() as conn:
@@ -349,6 +367,7 @@ def editar_proyecto(id):
 
 #Obtener proyecto por ID
 @api_blueprint.route('/api/proyecto/<int:id>', methods=['GET'])
+@api_admin_required
 def obtener_proyecto_por_id(id):
     with get_db_connection() as conn:
         proyecto = conn.execute('SELECT * FROM Proyecto WHERE id = ?', (id,)).fetchone()
@@ -359,6 +378,7 @@ def obtener_proyecto_por_id(id):
 #Parte de Asignacion
 # 1. Ruta para obtener trabajadores sin grupo asignado
 @api_blueprint.route('/api/trabajadores/sin_grupo')
+@api_admin_required
 def trabajadores_sin_grupo():
     with get_db_connection() as conn:
         trabajadores = conn.execute("""
@@ -369,6 +389,7 @@ def trabajadores_sin_grupo():
 
 # 2. Ruta para asignar grupo a trabajador y actualizar proyecto automáticamente
 @api_blueprint.route('/api/asignar_grupo', methods=['POST'])
+@api_admin_required
 def asignar_grupo_a_trabajador():
     data = request.get_json()
     trabajador_id = data.get('id')
@@ -400,6 +421,7 @@ def asignar_grupo_a_trabajador():
 
 #Parte de seguimiento de proyectos
 @api_blueprint.route('/api/proyecto/<nombre>', methods=['GET'])
+@api_admin_required
 def seguimiento_proyecto(nombre):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -430,6 +452,7 @@ def seguimiento_proyecto(nombre):
     })
 
 @api_blueprint.route('/api/proyecto/<nombre>/pdf', methods=['GET'])
+@api_admin_required
 def generar_pdf_proyecto(nombre):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -464,6 +487,7 @@ def generar_pdf_proyecto(nombre):
 
 # Ruta para obtener informacion del progreso de los proyectos
 @api_blueprint.route('/api/proyecto/<nombre>', methods=['GET'])
+@api_admin_required
 def obtener_progreso_proyecto(nombre):
     conn = get_db_connection()
     cursor = conn.cursor()

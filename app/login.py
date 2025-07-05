@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask_login import login_user, logout_user, login_required
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
+from app.models import Usuario
 
 login_blueprint = Blueprint('login', __name__)
 
@@ -106,27 +108,29 @@ def login():
         nombre_usuario = request.form['nombre_usuario']
         contrasena = request.form['contrasena']
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM Usuario WHERE nombre_usuario = ?', (nombre_usuario,))
-        usuario = cursor.fetchone()
-        conn.close()
-       # Verifica si el usuario existe o esta inactivo y si la contraseña es correcta (Majo)
+        # Buscar usuario usando el modelo
+        usuario = Usuario.get_by_username(nombre_usuario)
+        
+        # Verificar si el usuario existe, está activo y la contraseña es correcta
         if usuario is None:
             flash('El usuario es incorrecto.')
-        elif usuario['estado'] != 'activo':
+        elif usuario.estado != 'activo':
             flash('El usuario está inactivo. Contacta al administrador.')
-        elif not check_password_hash(usuario['contraseña'], contrasena):
+        elif not check_password_hash(usuario.contraseña, contrasena):
             flash('Contraseña incorrecta.')
         else:
+            # Iniciar sesión con Flask-Login
+            login_user(usuario)
+            
+            # Mantener información en sesión para compatibilidad con código existente
             session['usuario'] = nombre_usuario
-            session['usuario_id'] = usuario['id'] # ✅ Guardar el ID del usuario en la sesión
-            session['grupo'] = usuario['grupo'] # ✅ Guardar el grupo en la sesión
-            rol = usuario['rol']
-
-            if rol == 'admin':
+            session['usuario_id'] = usuario.id
+            session['grupo'] = usuario.grupo
+            
+            # Redirigir según el rol
+            if usuario.rol == 'admin':
                 return redirect(url_for('administrador'))
-            elif rol == 'lider':
+            elif usuario.rol == 'lider':
                 return redirect(url_for('lider.lideres'))
             else:
                 return redirect(url_for('trabajador.trabajador'))

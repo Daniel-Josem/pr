@@ -1,2 +1,64 @@
+# Archivos de configuración sensibles
+.env
+.env.local
+.env.production
+.env.development
+
 # Ignore logs directory
 logs/
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+
+# Archivos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Base de datos
+*.db
+*.sqlite3
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos temporales
+*.tmp
+*.temp
+.cache/
+
+# Archivos subidos por usuarios
+static/uploads/
+static/avatars/
+static/chat/
+static/archivos_tareas/

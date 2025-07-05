@@ -15,14 +15,13 @@ def setup_error_logging(app):
             os.makedirs(logs_dir)
         
         # Configurar logging de errores
-        if not app.debug:
-            file_handler = logging.FileHandler(os.path.join(logs_dir, 'error.log'))
-            file_handler.setFormatter(logging.Formatter(
-                '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-            ))
-            file_handler.setLevel(logging.ERROR)
-            app.logger.addHandler(file_handler)
-            app.logger.setLevel(logging.ERROR)
+        file_handler = logging.FileHandler(os.path.join(logs_dir, 'error.log'), encoding='utf-8')
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        file_handler.setLevel(logging.ERROR)
+        app.logger.addHandler(file_handler)
+        app.logger.setLevel(logging.ERROR)
     except Exception as e:
         print(f"Error setting up logging: {e}")
 
@@ -78,6 +77,25 @@ def register_error_handlers(app):
     def not_found_error(error):
         user_info = get_user_info()
         request_info = get_request_info()
+        
+        # Verificar si la URL contiene caracteres especiales o parece ser una URL malformada
+        url_path = request.path
+        
+        # Si la URL contiene caracteres especiales comunes de URLs malformadas
+        caracteres_especiales = ['¿', '¡', 'ñ', 'á', 'é', 'í', 'ó', 'ú', 'ü']
+        url_malformada = any(char in url_path for char in caracteres_especiales)
+        
+        # Si es una URL malformada o contiene espacios, redirigir al inicio
+        if url_malformada or ' ' in url_path or len(url_path) > 50:
+            log_error(404, f"URL malformada detectada, redirigiendo al inicio: {request.url}", user_info, request_info)
+            return render_template('error.html', 
+                                 error_code=404,
+                                 error_title="¡URL no válida!",
+                                 error_message="La URL que ingresaste no es válida. Te redirigiremos al inicio.",
+                                 redirect_url="/",
+                                 redirect_message="Ir al inicio"), 404
+        
+        # Para URLs normales que no existen
         log_error(404, f"Página no encontrada: {request.url}", user_info, request_info)
         
         return render_template('error.html', 
@@ -150,27 +168,6 @@ def register_error_handlers(app):
                                  error_title="Error interno",
                                  error_message="Ha ocurrido un error inesperado."), 500
 
-# Rutas de prueba para errores
-def register_test_routes(app):
-    """Registra rutas de prueba para errores"""
-    
-    @app.route('/test-error/<int:error_code>')
-    def test_error(error_code):
-        """Ruta para probar diferentes tipos de errores"""
-        from flask import abort
-        
-        if error_code == 404:
-            abort(404)
-        elif error_code == 500:
-            raise Exception("Error simulado para pruebas")
-        elif error_code == 403:
-            abort(403)
-        elif error_code == 401:
-            abort(401)
-        elif error_code == 400:
-            abort(400)
-        else:
-            return "Código de error no soportado para pruebas"
 
 # Rutas de monitoreo básicas
 def register_monitoring_routes(app):

@@ -10,7 +10,9 @@ from app.trabajador import trabajador_blueprint
 from app.recuperar import recuperar_bp
 from app.models import Usuario
 from app.session_decorators import admin_required
-from error_handlers import register_error_handlers, register_test_routes, register_monitoring_routes,register_security_middleware,setup_rate_limiting
+from error_handlers import register_error_handlers, register_monitoring_routes, register_security_middleware, setup_rate_limiting
+import re
+from urllib.parse import unquote
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_segura'
@@ -33,6 +35,21 @@ def force_logout_on_startup():
         session.clear()
         _session_cleared = True
         print("🔒 Sesiones limpiadas al iniciar la aplicación")
+
+@app.before_request
+def clean_malformed_urls():
+    """Limpia URLs malformadas antes de procesarlas"""
+    try:
+        # Decodificar la URL
+        decoded_path = unquote(request.path)
+        
+        # Verificar si contiene caracteres especiales o espacios
+        if re.search(r'[^\w\-\._~:/?#\[\]@!$&\'()*+,;=]', decoded_path):
+            # Si la URL contiene caracteres especiales, redirigir al inicio
+            return redirect(url_for('landing'))
+    except Exception:
+        # Si hay error decodificando, redirigir al inicio
+        return redirect(url_for('landing'))
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -202,28 +219,29 @@ def crear_tabla_usuario():
     conn.commit()
     conn.close()
 
-# Ejecutar la función al iniciar la app
+# Execute function when starting the app
 crear_tabla_usuario()
 
-# Registrar manejadores de errores
+# Register error handlers
 register_error_handlers(app)
 
-# Registrar rutas de prueba para errores (opcional - para testing)
-register_test_routes(app)
-
-# Registrar rutas de monitoreo (para administradores)
+# Register monitoring routes (for administrators)
 register_monitoring_routes(app)
 
-# Registrar middleware de seguridad
+# Register security middleware
 register_security_middleware(app)
 
-# Configurar rate limiting
+# Configure rate limiting
 setup_rate_limiting(app)
 
 # Rutas principales
 @app.route('/')
 def landing():
     return render_template('landingpage.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    return current_app.send_static_file('avatars/logo.png')
 
 @app.route('/administrador')
 @admin_required

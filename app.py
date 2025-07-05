@@ -10,6 +10,7 @@ from app.trabajador import trabajador_blueprint
 from app.recuperar import recuperar_bp
 from app.models import Usuario
 from app.session_decorators import admin_required
+from error_handlers import register_error_handlers, register_test_routes, register_monitoring_routes,register_security_middleware,setup_rate_limiting
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_segura'
@@ -203,6 +204,21 @@ def crear_tabla_usuario():
 
 # Ejecutar la función al iniciar la app
 crear_tabla_usuario()
+
+# Registrar manejadores de errores
+register_error_handlers(app)
+
+# Registrar rutas de prueba para errores (opcional - para testing)
+register_test_routes(app)
+
+# Registrar rutas de monitoreo (para administradores)
+register_monitoring_routes(app)
+
+# Registrar middleware de seguridad
+register_security_middleware(app)
+
+# Configurar rate limiting
+setup_rate_limiting(app)
 
 # Rutas principales
 @app.route('/')

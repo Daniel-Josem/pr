@@ -6,24 +6,28 @@ from email.mime.multipart import MIMEMultipart
 import secrets
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env
+load_dotenv()
 
 # Crear el blueprint
 recuperar_bp = Blueprint('recuperar', __name__)
 
-# Configuración para Gmail SMTP (opción 1)
-GMAIL_HOST = 'smtp.gmail.com'
-GMAIL_PORT = 587
-GMAIL_USERNAME = 'senaproyecto980@gmail.com'
-GMAIL_PASSWORD = 'riqf khmk inyc hdxa'
+# Configuración desde variables de entorno
+GMAIL_HOST = os.getenv('GMAIL_HOST', 'smtp.gmail.com')
+GMAIL_PORT = int(os.getenv('GMAIL_PORT', 587))
+GMAIL_USERNAME = os.getenv('GMAIL_USERNAME')
+GMAIL_PASSWORD = os.getenv('GMAIL_PASSWORD')
 
-# Configuración de Mailtrap (opción 2)
-MAILTRAP_HOST = 'live.smtp.mailtrap.io'
-MAILTRAP_PORT = 587
-MAILTRAP_USERNAME = 'api'
-MAILTRAP_PASSWORD = 'smtp@mailtrap.io'
+MAILTRAP_HOST = os.getenv('MAILTRAP_HOST', 'live.smtp.mailtrap.io')
+MAILTRAP_PORT = int(os.getenv('MAILTRAP_PORT', 587))
+MAILTRAP_USERNAME = os.getenv('MAILTRAP_USERNAME')
+MAILTRAP_PASSWORD = os.getenv('MAILTRAP_PASSWORD')
 
-# Elegir cuál usar
-USE_GMAIL = True  # 👈 True para Gmail, False para Mailtrap
+# Elegir cuál usar desde variable de entorno
+USE_GMAIL = os.getenv('USE_GMAIL', 'True').lower() == 'true'
 
 def get_db_connection():
     """Obtener conexión a la base de datos"""
@@ -109,7 +113,9 @@ def generar_token_recuperacion():
 def guardar_token_recuperacion(email, token):
     """Guardar el token en la base de datos con tiempo de expiración"""
     conn = get_db_connection()
-    expiracion = datetime.now() + timedelta(hours=1)  # Token válido por 1 hora
+    # Usar variable de entorno para la expiración
+    expiry_hours = int(os.getenv('RECOVERY_TOKEN_EXPIRY_HOURS', 1))
+    expiracion = datetime.now() + timedelta(hours=expiry_hours)
     
     try:
         print(f"🔍 Guardando token para {email}")

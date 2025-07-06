@@ -4,8 +4,7 @@
 .env.production
 .env.development
 
-# Ignore logs directory
-logs/
+
 
 # Entornos virtuales
 .venv/
@@ -38,27 +37,3 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Base de datos
-*.db
-*.sqlite3
-
-# Archivos de sistema
-.DS_Store
-Thumbs.db
-
-# Archivos de IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Archivos temporales
-*.tmp
-*.temp
-.cache/
-
-# Archivos subidos por usuarios
-static/uploads/
-static/avatars/
-static/chat/
-static/archivos_tareas/

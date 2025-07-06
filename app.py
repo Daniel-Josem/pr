@@ -13,9 +13,14 @@ from app.session_decorators import admin_required
 from error_handlers import register_error_handlers, register_monitoring_routes, register_security_middleware, setup_rate_limiting
 import re
 from urllib.parse import unquote
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'clave_secreta_segura'
+# Usar una clave secreta desde variables de entorno o una por defecto
+app.secret_key = os.getenv('SECRET_KEY', 'clave_secreta_segura')
 
 # Configurar Flask-Login
 login_manager = LoginManager()

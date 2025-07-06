@@ -99,7 +99,18 @@ def lideres():
     conn.row_factory = sqlite3.Row
 
     grupo_lider = session.get('grupo')
-    nombre_lider = session.get('usuario')
+    usuario_sesion = session.get('usuario')
+    usuario_id = session.get('usuario_id')
+
+    # Obtener información completa del usuario desde la BD
+    usuario_info = conn.execute('SELECT * FROM Usuario WHERE id = ?', (usuario_id,)).fetchone()
+    
+    if not usuario_info:
+        flash('Error al cargar información del usuario', 'error')
+        return redirect(url_for('login.login'))
+
+    nombre_lider = usuario_info['nombre_completo']
+    correo_lider = usuario_info['correo']
 
     # Tareas solo del grupo del líder
     tareas = conn.execute('SELECT * FROM tareas WHERE LOWER(curso_destino) = LOWER(?)', (grupo_lider,)).fetchall()
@@ -132,6 +143,7 @@ def lideres():
                            proyectos=proyectos,
                            usuarios_por_grupo=usuarios_por_grupo,
                            nombre_usuario=nombre_lider,
+                           correo_usuario=correo_lider,
                            grupo_lider=grupo_lider,
                            cantidad_notificaciones=cantidad_notificaciones)
 
@@ -395,65 +407,92 @@ def obtener_archivos_tarea(tarea_id):
 @lider.route('/obtener_perfil_lider')
 @lider_required
 def obtener_perfil_lider():
-
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
 
-    usuario = session.get('usuario')
-    user = conn.execute('SELECT nombre_completo, correo FROM Usuario WHERE nombre_usuario = ?', (usuario,)).fetchone()
+    usuario_id = session.get('usuario_id')
+    usuario_sesion = session.get('usuario')
+    
+    # Obtener nombre de usuario desde la sesión
+    if isinstance(usuario_sesion, dict):
+        nombre_usuario = usuario_sesion.get('nombre_usuario')
+    else:
+        nombre_usuario = usuario_sesion
+    
+    # Obtener información completa del usuario
+    user = conn.execute('SELECT * FROM Usuario WHERE id = ?', (usuario_id,)).fetchone()
     conn.close()
 
     if user:
-        return {'success': True, 'nombre': user['nombre_completo'], 'correo': user['correo']}
+        return jsonify({
+            'success': True, 
+            'nombre': user['nombre_completo'], 
+            'correo': user['correo'],
+            'telefono': user['telefono'] or '',
+            'direccion': user['direccion'] or '',
+            'descripcion': user['descripcion'] or ''
+        })
     else:
-        return {'success': False}
+        return jsonify({'success': False})
 
 
 @lider.route('/actualizar_perfil_lider', methods=['POST'])
 @lider_required
 def actualizar_perfil_lider():
-
-    usuario = request.form['usuario']
+    usuario_id = session.get('usuario_id')
+    usuario_sesion = session.get('usuario')
+    
+    # Obtener nombre de usuario desde la sesión
+    if isinstance(usuario_sesion, dict):
+        nombre_usuario = usuario_sesion.get('nombre_usuario')
+    else:
+        nombre_usuario = usuario_sesion
+    
     nombre = request.form['nombre']
     correo = request.form['correo']
-    contraseña_actual = request.form['contraseña_actual']
-    nueva_contraseña = request.form['nueva_contraseña']
-    confirmar_contraseña = request.form['confirmar_contraseña']
+    telefono = request.form.get('telefono', '')
+    direccion = request.form.get('direccion', '')
+    descripcion = request.form.get('descripcion', '')
+    contraseña_actual = request.form.get('contraseña_actual', '')
+    nueva_contraseña = request.form.get('nueva_contraseña', '')
+    confirmar_contraseña = request.form.get('confirmar_contraseña', '')
 
     conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row  # Esto es lo que te faltaba
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
     # Verificar si el usuario existe
-    user = cursor.execute('SELECT * FROM Usuario WHERE nombre_usuario = ?', (usuario,)).fetchone()
+    user = cursor.execute('SELECT * FROM Usuario WHERE id = ?', (usuario_id,)).fetchone()
 
     if not user:
         conn.close()
-        return 'Usuario no encontrado'
+        return jsonify({'success': False, 'message': 'Usuario no encontrado'})
 
     # Si el usuario quiere cambiar la contraseña
     if contraseña_actual and nueva_contraseña and confirmar_contraseña:
         if nueva_contraseña != confirmar_contraseña:
             conn.close()
-            return 'Las contraseñas nuevas no coinciden'
+            return jsonify({'success': False, 'message': 'Las contraseñas nuevas no coinciden'})
 
         if not check_password_hash(user['contraseña'], contraseña_actual):
             conn.close()
-            return 'La contraseña actual es incorrecta'
+            return jsonify({'success': False, 'message': 'La contraseña actual es incorrecta'})
 
         # Cambiar contraseña
         nueva_contraseña_hash = generate_password_hash(nueva_contraseña)
-        cursor.execute('UPDATE Usuario SET nombre_completo = ?, correo = ?, contraseña = ? WHERE nombre_usuario = ?', 
-                       (nombre, correo, nueva_contraseña_hash, usuario))
+        cursor.execute('''UPDATE Usuario SET nombre_completo = ?, correo = ?, telefono = ?, 
+                         direccion = ?, descripcion = ?, contraseña = ? WHERE id = ?''', 
+                       (nombre, correo, telefono, direccion, descripcion, nueva_contraseña_hash, usuario_id))
     else:
-        # Solo actualizar nombre y correo
-        cursor.execute('UPDATE Usuario SET nombre_completo = ?, correo = ? WHERE nombre_usuario = ?', 
-                       (nombre, correo, usuario))
+        # Solo actualizar información del perfil
+        cursor.execute('''UPDATE Usuario SET nombre_completo = ?, correo = ?, telefono = ?, 
+                         direccion = ?, descripcion = ? WHERE id = ?''', 
+                       (nombre, correo, telefono, direccion, descripcion, usuario_id))
 
     conn.commit()
     conn.close()
-
-    return redirect(url_for('lider.lideres'))
+    
+    return jsonify({'success': True, 'message': 'Perfil actualizado correctamente'})
 
 
 

@@ -534,6 +534,9 @@ document.getElementById('btnEditarPerfil').addEventListener('click', function ()
             if (data.success) {
                 document.getElementById('perfilNombre').value = data.nombre;
                 document.getElementById('perfilCorreo').value = data.correo;
+                document.getElementById('perfilTelefono').value = data.telefono || '';
+                document.getElementById('perfilDireccion').value = data.direccion || '';
+                document.getElementById('perfilDescripcion').value = data.descripcion || '';
 
                 // Limpiar los campos de contraseña
                 document.getElementById('contraseñaActual').value = '';
@@ -545,5 +548,36 @@ document.getElementById('btnEditarPerfil').addEventListener('click', function ()
             } else {
                 alert('Error al cargar perfil');
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al cargar perfil');
         });
+});
+
+// Manejar el envío del formulario de perfil
+document.getElementById('formPerfilLider').addEventListener('submit', function (e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/actualizar_perfil_lider', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Perfil actualizado correctamente');
+            bootstrap.Modal.getInstance(document.getElementById('modalPerfilLider')).hide();
+            // Recargar la página para actualizar la información mostrada
+            location.reload();
+        } else {
+            alert(data.message || 'Error al actualizar perfil');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al actualizar perfil');
+    });
 });

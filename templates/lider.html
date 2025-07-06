@@ -82,7 +82,7 @@
                                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                                     <li><a class="dropdown-item" href="#" id="btnEditarPerfil">Perfil</a></li>
                                     <li><hr class="dropdown-divider" />
-                                    <li><a class="dropdown-item text-danger" href="{{ url_for('login.login') }}">Cerrar sesión</a></li>
+                                    <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">Cerrar sesión</a></li>
                                 </ul>
 
                             </div>
@@ -442,6 +442,18 @@
                     <div class="mb-3">
                         <label for="perfilCorreo" class="form-label">Correo</label>
                         <input type="email" class="form-control" id="perfilCorreo" name="correo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="perfilTelefono" class="form-label">Teléfono</label>
+                        <input type="tel" class="form-control" id="perfilTelefono" name="telefono">
+                    </div>
+                    <div class="mb-3">
+                        <label for="perfilDireccion" class="form-label">Dirección</label>
+                        <input type="text" class="form-control" id="perfilDireccion" name="direccion">
+                    </div>
+                    <div class="mb-3">
+                        <label for="perfilDescripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="perfilDescripcion" name="descripcion" rows="3"></textarea>
                     </div>
                     <hr>
                     <h6>Cambiar Contraseña</h6>

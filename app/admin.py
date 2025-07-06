@@ -6,7 +6,7 @@ from unidecode import unidecode
 from datetime import datetime
 import sqlite3
 import os
-from app.session_decorators import api_admin_required
+from app.session_decorators import api_admin_required, nocache
 
 api_blueprint = Blueprint('api', __name__)
 

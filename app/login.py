@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.models import Usuario
+from app.session_decorators import nocache
 
 login_blueprint = Blueprint('login', __name__)
 
@@ -103,6 +104,7 @@ def get_db_connection():
 
 # Ruta del login
 @login_blueprint.route('/login', methods=['GET', 'POST'])
+@nocache
 def login():
     if request.method == 'POST':
         nombre_usuario = request.form['nombre_usuario']
@@ -144,6 +146,7 @@ def login():
 
 # Ruta del registro
 @login_blueprint.route('/crear_usuario', methods=['GET', 'POST'])
+@nocache
 def crear_usuario():
     if request.method == 'POST':
         nombre = request.form['nombre']

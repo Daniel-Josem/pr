@@ -1,6 +1,20 @@
 from functools import wraps
-from flask import redirect, url_for, flash, session, jsonify
+from flask import redirect, url_for, flash, session, jsonify, make_response
 import sqlite3
+
+def nocache(f):
+    """
+    Decorador que previene el caché del navegador
+    Útil para páginas con información sensible o que cambian frecuentemente
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        response = make_response(f(*args, **kwargs))
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+    return decorated_function
 
 def require_login(f):
     """
@@ -107,3 +121,52 @@ def api_lider_required(f):
 def api_trabajador_required(f):
     """Decorador específico para APIs de trabajadores"""
     return require_api_role('trabajador')(f)
+
+def secure_route(allowed_roles=None):
+    """
+    Decorador más robusto que combina validación de sesión, rol y nocache
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Verificar si hay sesión activa
+            if 'usuario' not in session or 'usuario_id' not in session:
+                session.clear()  # Limpiar cualquier dato residual
+                flash('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', 'warning')
+                return redirect(url_for('login.login'))
+            
+            # Verificar que el usuario existe y está activo en la BD
+            conn = sqlite3.connect('gestor_de_tareas.db')
+            cursor = conn.cursor()
+            usuario_id = session.get('usuario_id')
+            
+            cursor.execute('SELECT rol, estado FROM Usuario WHERE id = ?', (usuario_id,))
+            resultado = cursor.fetchone()
+            conn.close()
+            
+            if not resultado:
+                session.clear()
+                flash('Usuario no válido. Por favor, inicia sesión nuevamente.', 'error')
+                return redirect(url_for('login.login'))
+            
+            rol_usuario, estado_usuario = resultado
+            
+            # Verificar que el usuario está activo
+            if estado_usuario != 'activo':
+                session.clear()
+                flash('Tu cuenta está inactiva. Contacta al administrador.', 'error')
+                return redirect(url_for('login.login'))
+            
+            # Verificar roles si se especificaron
+            if allowed_roles and rol_usuario not in allowed_roles:
+                flash(f'No tienes permisos para acceder a esta página.', 'error')
+                return redirect(url_for('login.login'))
+            
+            # Ejecutar la función con nocache
+            response = make_response(f(*args, **kwargs))
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
+        return decorated_function
+    return decorator

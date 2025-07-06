@@ -12,14 +12,14 @@ import os
 from datetime import datetime
 import uuid
 from werkzeug.utils import secure_filename
-from app.session_decorators import trabajador_required, api_trabajador_required
+from app.session_decorators import trabajador_required, api_trabajador_required, secure_route
 
 trabajador_blueprint = Blueprint('trabajador', __name__)
 
 
 
 @trabajador_blueprint.route('/trabajador')
-@trabajador_required
+@secure_route(allowed_roles=['trabajador'])
 def trabajador():
 
     usuario = session.get('usuario')

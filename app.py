@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session, redirect, url_for, jsonify, request, current_app, flash
+from flask import Flask, render_template, session, redirect, url_for, jsonify, request, current_app, flash, make_response
 from flask_login import LoginManager, login_required, current_user, logout_user
 import sqlite3
 import os
@@ -9,7 +9,7 @@ from app.lider import lider
 from app.trabajador import trabajador_blueprint
 from app.recuperar import recuperar_bp
 from app.models import Usuario
-from app.session_decorators import admin_required
+from app.session_decorators import admin_required, nocache, secure_route
 from error_handlers import register_error_handlers, register_monitoring_routes, register_security_middleware, setup_rate_limiting
 import re
 from urllib.parse import unquote
@@ -69,6 +69,7 @@ app.register_blueprint(trabajador_blueprint)
 app.register_blueprint(recuperar_bp)
 
 @app.route('/api/tarea/<int:tarea_id>/archivos', methods=['GET'])
+@secure_route(allowed_roles=['admin', 'lider', 'trabajador'])
 def obtener_archivos_tarea(tarea_id):
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
@@ -245,14 +246,96 @@ def favicon():
     return current_app.send_static_file('avatars/logo.png')
 
 @app.route('/administrador')
-@admin_required
+@secure_route(allowed_roles=['admin'])
 def administrador():
     return render_template('admin.html')
 
 @app.route('/logout')
+@nocache
 def logout():
+    # Limpieza completa de sesión
     session.clear()
-    return redirect(url_for('landing'))
+    
+    # También limpiar Flask-Login
+    if current_user.is_authenticated:
+        logout_user()
+    
+    # Crear respuesta con headers adicionales de seguridad
+    response = make_response(redirect(url_for('landing')))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    response.headers['Clear-Site-Data'] = '"cache", "cookies", "storage"'
+    
+    flash('Has cerrado sesión correctamente.', 'success')
+    return response
+
+@app.before_request
+def validate_session():
+    """Valida la sesión en cada request para rutas protegidas"""
+    # Lista de rutas que requieren autenticación
+    protected_routes = [
+        '/administrador', '/lider', '/trabajador', 
+        '/api/', '/actualizar_perfil', '/subir-archivo',
+        '/crear_tarea', '/editar_tarea', '/eliminar_tarea',
+        '/crear_proyecto', '/eliminar_proyecto', '/notificaciones'
+    ]
+    
+    # Verificar si la ruta actual requiere autenticación
+    requires_auth = any(request.path.startswith(route) for route in protected_routes)
+    
+    if requires_auth:
+        # Si hay sesión pero no tiene los campos necesarios, limpiar
+        if 'usuario' in session and 'usuario_id' not in session:
+            session.clear()
+            return redirect(url_for('login.login'))
+        
+        # Si no hay sesión, redirigir a login
+        if 'usuario' not in session:
+            return redirect(url_for('login.login'))
+        
+        # Verificar que el usuario todavía existe y está activo
+        try:
+            conn = sqlite3.connect('gestor_de_tareas.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT estado FROM Usuario WHERE id = ?', (session.get('usuario_id'),))
+            resultado = cursor.fetchone()
+            conn.close()
+            
+            if not resultado or resultado[0] != 'activo':
+                session.clear()
+                flash('Tu sesión ha expirado o tu cuenta está inactiva.', 'error')
+                return redirect(url_for('login.login'))
+        except Exception:
+            session.clear()
+            return redirect(url_for('login.login'))
+
+@app.route('/api/validar-sesion', methods=['GET'])
+def validar_sesion():
+    """Endpoint para validar si la sesión sigue siendo válida"""
+    if 'usuario' not in session or 'usuario_id' not in session:
+        return jsonify({'valid': False}), 401
+    
+    try:
+        conn = sqlite3.connect('gestor_de_tareas.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT estado FROM Usuario WHERE id = ?', (session.get('usuario_id'),))
+        resultado = cursor.fetchone()
+        conn.close()
+        
+        if not resultado or resultado[0] != 'activo':
+            session.clear()
+            return jsonify({'valid': False}), 401
+        
+        return jsonify({'valid': True}), 200
+    except Exception:
+        return jsonify({'valid': False}), 401
+
+@app.route('/api/cleanup-session', methods=['POST'])
+def cleanup_session():
+    """Endpoint para limpiar sesión cuando se cierra la ventana"""
+    session.clear()
+    return '', 204
 
 if __name__ == '__main__':
     app.run(debug=True)

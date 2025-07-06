@@ -4,7 +4,7 @@ from werkzeug.security import generate_password_hash,check_password_hash
 import sqlite3
 import os
 from werkzeug.utils import secure_filename
-from app.session_decorators import lider_required
+from app.session_decorators import lider_required, secure_route
 
 lider = Blueprint('lider', __name__)
 
@@ -93,7 +93,7 @@ def crear_tarea():
 
 # Mostrar tareas
 @lider.route('/lider')
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def lideres():
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row

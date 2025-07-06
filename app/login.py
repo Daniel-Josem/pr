@@ -123,7 +123,11 @@ def login():
             login_user(usuario)
             
             # Mantener información en sesión para compatibilidad con código existente
-            session['usuario'] = nombre_usuario
+            session['usuario'] = {
+                'id': usuario.id,
+                'email': usuario.correo,
+                'nombre_usuario': usuario.nombre_usuario
+            }
             session['usuario_id'] = usuario.id
             session['grupo'] = usuario.grupo
             

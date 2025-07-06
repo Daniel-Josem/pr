@@ -213,19 +213,7 @@ document.addEventListener("DOMContentLoaded", function () {
     dropdownNotificaciones.addEventListener('click', cargarNotificaciones);
   }
   
-  // Formulario de soporte en la sección de ayuda
-  const formularioSoporte = document.getElementById('formulario-soporte');
-  if (formularioSoporte) {
-    formularioSoporte.addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      // En un entorno real, aquí enviaríamos los datos al servidor
-      alert('Tu consulta ha sido enviada. Te responderemos a la brevedad.');
-      
-      // Limpiar el formulario
-      formularioSoporte.reset();
-    });
-  }
+
 });
 
 // Función para mostrar una sección y ocultar las demás

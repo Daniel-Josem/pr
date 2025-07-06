@@ -18,11 +18,7 @@
   border-radius: 1.3rem;
   border-left: 6px solid #19875433;
 }
-.ayuda-soporte-card {
-  background: linear-gradient(120deg, #fff3cd 0%, #f8f9fa 100%);
-  border-radius: 1.3rem;
-  border-left: 6px solid #19875433;
-}
+
 .ayuda-guias-card {
   background: linear-gradient(120deg, #e9f9ee 80%, #e3f2fd 100%);
   border-radius: 1.3rem;

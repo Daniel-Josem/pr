@@ -298,9 +298,6 @@
               <h2 class="text-primary fw-bold">Proyecto: {{ nombre_proyecto }}</h2>
               <h2 class="text-success fw-bold">Mis Tareas</h2>
           <div>
-              <button class="btn btn-outline-secondary me-2" id="btn-exportar-tareas">
-                <i class="bi bi-file-earmark-excel me-1"></i> Exportar
-              </button>
               <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#tareaFilterModal">
                 <i class="bi bi-funnel me-1"></i> Filtros
               </button>
@@ -606,14 +603,14 @@
               <div class="card border-0 shadow-sm ayuda-soporte-card animate__animated animate__fadeInRight">
                 <div class="card-body">
                   <h5 class="card-title mb-4 text-success"><i class="bi bi-headset me-2"></i>Contactar Soporte</h5>
-                  <form id="formulario-soporte">
+                  <form id="formulario-soporte" enctype="multipart/form-data" autocomplete="off">
                     <div class="mb-3">
                       <label for="asunto-soporte" class="form-label">Asunto</label>
-                      <input type="text" class="form-control ayuda-input" id="asunto-soporte" placeholder="Ej: Problema con calendario">
+                      <input type="text" class="form-control ayuda-input" id="asunto-soporte" name="asunto" placeholder="Ej: Problema con calendario" required>
                     </div>
                     <div class="mb-3">
                       <label for="tipo-soporte" class="form-label">Tipo de problema</label>
-                      <select class="form-select ayuda-input" id="tipo-soporte">
+                      <select class="form-select ayuda-input" id="tipo-soporte" name="tipo">
                         <option selected value="">Selecciona una opción</option>
                         <option value="tecnico">Problema técnico</option>
                         <option value="acceso">Problema de acceso</option>
@@ -623,72 +620,59 @@
                     </div>
                     <div class="mb-3">
                       <label for="descripcion-soporte" class="form-label">Descripción</label>
-                      <textarea class="form-control ayuda-input" id="descripcion-soporte" rows="4" placeholder="Describe tu problema detalladamente..."></textarea>
+                      <textarea class="form-control ayuda-input" id="descripcion-soporte" name="descripcion" rows="4" placeholder="Describe tu problema detalladamente..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                      <label for="archivo-soporte" class="form-label">Adjuntar archivo (opcional, PDF/PNG/JPG, máx 5MB)</label>
+                      <input type="file" class="form-control ayuda-input" id="archivo-soporte" name="archivo" accept=".pdf,image/png,image/jpeg">
                     </div>
                     <button type="submit" class="btn btn-success w-100 ayuda-btn-enviar">Enviar Consulta</button>
                   </form>
                   <div id="mensaje-soporte" class="mt-3"></div>
-      <script>
-        // Función para enviar el formulario de soporte por AJAX
-        document.addEventListener('DOMContentLoaded', function() {
-          const form = document.getElementById('formulario-soporte');
-          if (form) {
-            form.addEventListener('submit', async function(e) {
-              e.preventDefault();
-              const asunto = document.getElementById('asunto-soporte').value.trim();
-              const tipo = document.getElementById('tipo-soporte').value;
-              const descripcion = document.getElementById('descripcion-soporte').value.trim();
-              const mensajeDiv = document.getElementById('mensaje-soporte');
-              mensajeDiv.textContent = '';
-              if (!asunto || !tipo || !descripcion) {
-                mensajeDiv.textContent = 'Por favor, completa todos los campos.';
-                mensajeDiv.className = 'mt-3 text-danger fw-semibold';
-                return;
-              }
-              try {
-                // Aquí puedes cambiar la URL por tu endpoint real
-                const resp = await fetch('/api/soporte', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ asunto, tipo, descripcion })
-                });
-                if (resp.ok) {
-                  mensajeDiv.textContent = '¡Tu consulta fue enviada correctamente!';
-                  mensajeDiv.className = 'mt-3 text-success fw-semibold';
-                  form.reset();
-                } else {
-                  mensajeDiv.textContent = 'Hubo un error al enviar tu consulta. Intenta nuevamente.';
-                  mensajeDiv.className = 'mt-3 text-danger fw-semibold';
-                }
-              } catch (err) {
-                mensajeDiv.textContent = 'Error de conexión. Intenta más tarde.';
-                mensajeDiv.className = 'mt-3 text-danger fw-semibold';
-              }
-            });
-          }
-        });
-      </script>
-                  </form>
+                  <script src="/static/js/soporte.js?v=20250706"></script>
                 </div>
               </div>
+
+              <!-- Tarjeta de Guías Rápidas -->
               <div class="card border-0 shadow-sm mt-4 ayuda-guias-card animate__animated animate__fadeInUp">
                 <div class="card-body">
                   <h5 class="card-title text-success"><i class="bi bi-journal-bookmark-fill me-2"></i>Guías Rápidas</h5>
                   <div class="list-group list-group-flush ayuda-guias-list">
-                    <a href="#" class="list-group-item list-group-item-action ayuda-guia-link">
-                      <i class="bi bi-file-earmark-pdf me-2 text-danger"></i> Guía de usuario (PDF)
+                    <a href="{{ url_for('static', filename='docs/guia_usuario_trabajador.pdf') }}" class="list-group-item list-group-item-action ayuda-guia-link" target="_blank" download title="Ver o descargar Guía de usuario (PDF)">
+                      <i class="bi bi-file-earmark-pdf me-2 text-danger" style="font-size: 1.4em;"></i> Guía de usuario (PDF)
                     </a>
-                    <a href="#" class="list-group-item list-group-item-action ayuda-guia-link">
-                      <i class="bi bi-play-circle me-2 text-primary"></i> Video tutorial: Gestión de tareas
+                    <a href="#" class="list-group-item list-group-item-action ayuda-guia-link" id="btn-ver-video-guia">
+                      <i class="bi bi-play-circle me-2 text-primary"></i> Video tutorial: Guía de uso
                     </a>
-                    <a href="#" class="list-group-item list-group-item-action ayuda-guia-link">
-                      <i class="bi bi-play-circle me-2 text-primary"></i> Video tutorial: Uso del calendario
-                    </a>
+                    <div id="contenedor-video-guia" class="mt-3" style="display:none;">
+                      <video id="video-guia-trabajador" controls style="width:100%;max-width:600px;border-radius:1rem;box-shadow:0 2px 8px rgba(25,135,84,0.10);background:#000;" poster="/static/avatars/logo.png">
+                        <source src="{{ url_for('static', filename='video_guia/guia_trabajador.mp4') }}" type="video/mp4">
+                        Tu navegador no soporta la reproducción de video HTML5.
+                      </video>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+          <script>
+            // Mostrar/ocultar el video de la guía cuando se hace clic en el enlace
+            document.addEventListener('DOMContentLoaded', function() {
+              var btnVideo = document.getElementById('btn-ver-video-guia');
+              var contenedorVideo = document.getElementById('contenedor-video-guia');
+              if(btnVideo && contenedorVideo) {
+                btnVideo.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  if(contenedorVideo.style.display === 'none') {
+                    contenedorVideo.style.display = 'block';
+                    contenedorVideo.scrollIntoView({behavior:'smooth', block:'center'});
+                  } else {
+                    contenedorVideo.style.display = 'none';
+                  }
+                });
+              }
+            });
+          </script>
           <style>
               .ayuda-container-custom {
               background: linear-gradient(135deg, #f8fff8 0%, #e8f5e8 100%);

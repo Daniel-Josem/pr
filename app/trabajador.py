@@ -1,43 +1,58 @@
+from email.message import EmailMessage
+import smtplib
+from dotenv import load_dotenv
+import os
+# Endpoint para enviar reporte de soporte
+
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
 from flask_login import login_required, current_user
 import time
 import sqlite3
 import os
 from datetime import datetime
-import smtplib
-from email.mime.text import MIMEText
 import uuid
 from werkzeug.utils import secure_filename
 from app.session_decorators import trabajador_required, api_trabajador_required
 
 trabajador_blueprint = Blueprint('trabajador', __name__)
 
+
+
 @trabajador_blueprint.route('/trabajador')
 @trabajador_required
 def trabajador():
 
-    usuario_id = session.get('usuario')
+    usuario = session.get('usuario')
     grupo_usuario = session.get('grupo')
-    print(f"ID usuario logueado: {usuario_id}, Grupo: '{grupo_usuario}'")
+    print(f"ID usuario logueado: {usuario}, Grupo: '{grupo_usuario}'")
 
+    # Si la sesión es dict (nuevo formato), extraer el id
+    if isinstance(usuario, dict):
+        usuario_id = usuario.get('id')
+        usuario_nombre = usuario.get('nombre_usuario')
+    else:
+        usuario_id = usuario
+        usuario_nombre = usuario
+
+    # Asegurar que usuario_id sea un entero válido
+    try:
+        if usuario_id is not None:
+            usuario_id = int(usuario_id)
+    except (ValueError, TypeError):
+        print(f"Error: usuario_id no válido: {usuario_id}")
+        return redirect(url_for('login.login'))
 
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
 
     # Obtener datos de perfil del usuario
-    # Detectar si usuario_id es numérico (ID) o string (nombre_usuario)
     print('DEBUG usuario_id en sesión:', usuario_id, type(usuario_id))
     usuario_row = None
     if usuario_id is not None:
-        try:
-            int_id = int(usuario_id)
-            usuario_row = conn.execute(
-                'SELECT nombre_completo, avatar_url, acerca_de_mi FROM Usuario WHERE id = ?', (int_id,)
-            ).fetchone()
-        except (ValueError, TypeError):
-            usuario_row = conn.execute(
-                'SELECT nombre_completo, avatar_url, acerca_de_mi FROM Usuario WHERE nombre_usuario = ?', (usuario_id,)
-            ).fetchone()
+        usuario_row = conn.execute(
+            'SELECT nombre_completo, avatar_url, acerca_de_mi FROM Usuario WHERE id = ?', (usuario_id,)
+        ).fetchone()
+        
     if usuario_row:
         nombre_usuario = usuario_row['nombre_completo'] or 'Usuario'
         avatar_url = usuario_row['avatar_url'] or '/static/avatars/perfil_predeterminado.png'
@@ -48,7 +63,7 @@ def trabajador():
         acerca_de_mi = ''
 
     proyecto_row = conn.execute(
-        'SELECT proyecto FROM usuario WHERE id = ?', (usuario_id,)
+        'SELECT proyecto FROM Usuario WHERE id = ?', (usuario_id,)
     ).fetchone()
     nombre_proyecto = proyecto_row['proyecto'] if proyecto_row else "Sin proyecto asignado"
 
@@ -166,7 +181,11 @@ def api_actualizar_perfil():
     avatar_url = None
 
     # Obtener usuario actual
-    usuario_id = session.get('usuario')
+    usuario = session.get('usuario')
+    if isinstance(usuario, dict):
+        usuario_id = usuario.get('id')
+    else:
+        usuario_id = usuario
     if not usuario_id:
         return jsonify({'success': False, 'error': 'No autenticado'}), 401
 
@@ -227,12 +246,18 @@ def subir_archivo_tarea(tarea_id):
         return jsonify({'ok': False, 'msg': 'Nombre de archivo vacío'}), 400
     
     # Obtener información del usuario
-    usuario_id = session.get('usuario_id')  # Asumiendo que tienes el ID del usuario en sesión
+    usuario = session.get('usuario')
+    if isinstance(usuario, dict):
+        usuario_id = usuario.get('id')
+        usuario_nombre = usuario.get('nombre_usuario')
+    else:
+        usuario_id = usuario
+        usuario_nombre = usuario
     if not usuario_id:
         # Si no tienes usuario_id en sesión, obtenerlo de la base de datos
         conn = sqlite3.connect('gestor_de_tareas.db')
         cur = conn.cursor()
-        cur.execute('SELECT id FROM Usuario WHERE usuario = ?', (session.get('usuario'),))
+        cur.execute('SELECT id FROM Usuario WHERE nombre_usuario = ?', (usuario_nombre,))
         result = cur.fetchone()
         conn.close()
         if result:
@@ -327,8 +352,12 @@ def api_tarea_detalle(tarea_id):
 @trabajador_blueprint.route('/api/tareas')
 @api_trabajador_required
 def api_tareas_usuario():
-    usuario_id = session.get('usuario')
+    usuario = session.get('usuario')
     grupo_usuario = session.get('grupo')
+    if isinstance(usuario, dict):
+        usuario_id = usuario.get('id')
+    else:
+        usuario_id = usuario
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
     tareas = conn.execute('''
@@ -452,7 +481,11 @@ def debug_archivos_fisicos():
 @trabajador_blueprint.route('/api/notificaciones')
 @api_trabajador_required
 def api_notificaciones_trabajador():
-    usuario_id = session.get('usuario')
+    usuario = session.get('usuario')
+    if isinstance(usuario, dict):
+        usuario_id = usuario.get('id')
+    else:
+        usuario_id = usuario
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
     notificaciones = conn.execute('SELECT * FROM notificaciones WHERE id_usuario = ? ORDER BY id DESC', (usuario_id,)).fetchall()
@@ -476,7 +509,11 @@ def actualizar_foto_trabajador():
     file_path = os.path.join(upload_folder, filename)
     file.save(file_path)
 
-    usuario_id = session.get('usuario')
+    usuario = session.get('usuario')
+    if isinstance(usuario, dict):
+        usuario_id = usuario.get('id')
+    else:
+        usuario_id = usuario
     conn = sqlite3.connect('gestor_de_tareas.db')
     cursor = conn.cursor()
     cursor.execute("UPDATE Usuario SET foto = ? WHERE id = ?", (filename, usuario_id))
@@ -494,6 +531,89 @@ def actualizar_foto_trabajador():
     nombre = row[0] if row else ''
     acerca_de_mi = row[1] if row else ''
     return jsonify({'success': True, 'foto_url': foto_url, 'nombre': nombre, 'acerca_de_mi': acerca_de_mi})
+
+
+@trabajador_blueprint.route('/enviar_reporte', methods=['POST'])
+def enviar_reporte():
+    # Usar la configuración Gmail del .env
+    email_destino = os.getenv('GMAIL_USERNAME')
+    email_password = os.getenv('GMAIL_PASSWORD')
+    email_host = os.getenv('GMAIL_HOST', 'smtp.gmail.com')
+    email_port = int(os.getenv('GMAIL_PORT', '587'))
+    
+    # Validar que las credenciales estén configuradas
+    if not email_destino or not email_password:
+        return jsonify({'ok': False, 'error': 'Configuración de Gmail no encontrada en variables de entorno'}), 500
+
+    usuario = session.get('usuario')
+    if not usuario or not isinstance(usuario, dict) or 'email' not in usuario:
+        return jsonify({'ok': False, 'error': 'Usuario no autenticado'}), 401
+    remitente = usuario['email']
+
+    try:
+        # Obtener datos del formulario
+        asunto = request.form.get('asunto', '').strip()
+        tipo = request.form.get('tipo', '').strip()
+        descripcion = request.form.get('descripcion', '').strip()
+        archivo = request.files.get('archivo')
+
+        # Validar campos obligatorios
+        if not asunto or not descripcion:
+            return jsonify({'ok': False, 'error': 'Asunto y descripción son obligatorios.'}), 400
+
+        # Validar archivo adjunto si existe
+        adjunto_bytes = None
+        adjunto_nombre = None
+        adjunto_mime = None
+        if archivo:
+            allowed = {'application/pdf', 'image/png', 'image/jpeg'}
+            if archivo.mimetype not in allowed:
+                return jsonify({'ok': False, 'error': 'Tipo de archivo no permitido. Solo PDF, PNG o JPG.'}), 400
+            archivo.seek(0, 2)
+            size = archivo.tell()
+            archivo.seek(0)
+            if size > 5 * 1024 * 1024:
+                return jsonify({'ok': False, 'error': 'El archivo supera el tamaño máximo de 5 MB.'}), 400
+            adjunto_bytes = archivo.read()
+            adjunto_nombre = secure_filename(archivo.filename)
+            adjunto_mime = archivo.mimetype
+
+        # Validar configuración SMTP
+        if not all([email_destino, email_password, email_host, email_port]):
+            return jsonify({'ok': False, 'error': 'Configuración SMTP incompleta'}), 500
+
+        # Crear mensaje de email
+        msg = EmailMessage()
+        msg['Subject'] = f"[Soporte] {asunto}"
+        msg['From'] = email_destino  # El remitente SMTP es la cuenta de soporte
+        msg['To'] = email_destino
+        cuerpo = f"""
+Se ha recibido un nuevo reporte de soporte:
+
+Remitente (usuario autenticado): {remitente}
+Tipo de problema: {tipo}
+Asunto: {asunto}
+Descripción:
+{descripcion}
+"""
+        msg.set_content(cuerpo)
+        if adjunto_bytes:
+            msg.add_attachment(adjunto_bytes, maintype=adjunto_mime.split('/')[0], subtype=adjunto_mime.split('/')[1], filename=adjunto_nombre)
+
+        # Enviar email
+        try:
+            with smtplib.SMTP(email_host, email_port) as smtp:
+                smtp.starttls()
+                smtp.login(email_destino, email_password)
+                smtp.send_message(msg)
+        except smtplib.SMTPAuthenticationError:
+            return jsonify({'ok': False, 'error': 'Credenciales SMTP inválidas.'}), 500
+        except Exception as e:
+            return jsonify({'ok': False, 'error': f'Error enviando email: {str(e)}'}), 500
+
+        return jsonify({'ok': True})
+    except Exception as ex:
+        return jsonify({'ok': False, 'error': str(ex)}), 500
 
 
 

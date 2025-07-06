@@ -15,8 +15,17 @@ import re
 from urllib.parse import unquote
 from dotenv import load_dotenv
 
-# Cargar variables de entorno desde .env
-load_dotenv()
+
+
+# Cargar variables de entorno desde .env (soporta renombrar env → .env)
+import pathlib
+dotenv_path = pathlib.Path('.env')
+if not dotenv_path.exists():
+    alt_env = pathlib.Path('env')
+    if alt_env.exists():
+        alt_env.rename('.env')
+        print('Archivo env renombrado a .env')
+load_dotenv(dotenv_path='.env')
 
 app = Flask(__name__)
 # Usar una clave secreta desde variables de entorno o una por defecto
@@ -29,17 +38,6 @@ login_manager.login_view = 'login.login'
 login_manager.login_message = 'Por favor, inicia sesión para acceder a esta página.'
 login_manager.login_message_category = 'info'
 
-# Variable para controlar si ya se limpió la sesión
-_session_cleared = False
-
-@app.before_request
-def force_logout_on_startup():
-    """Limpia todas las sesiones al iniciar la aplicación"""
-    global _session_cleared
-    if not _session_cleared:
-        session.clear()
-        _session_cleared = True
-        print("🔒 Sesiones limpiadas al iniciar la aplicación")
 
 @app.before_request
 def clean_malformed_urls():
@@ -218,8 +216,6 @@ def crear_tabla_usuario():
       FOREIGN KEY(tarea_id) REFERENCES tareas(id) ON DELETE CASCADE,
       FOREIGN KEY(usuario_id) REFERENCES Usuario(id) ON DELETE CASCADE
     );''')
-
-    
 
     conn.commit()
     conn.close()

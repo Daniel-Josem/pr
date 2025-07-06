@@ -29,7 +29,12 @@ def require_role(role):
             # Verificar el rol
             conn = sqlite3.connect('gestor_de_tareas.db')
             cursor = conn.cursor()
-            cursor.execute('SELECT rol FROM Usuario WHERE nombre_usuario = ?', (session['usuario'],))
+            usuario = session.get('usuario')
+            if isinstance(usuario, dict):
+                nombre_usuario = usuario.get('nombre_usuario')
+            else:
+                nombre_usuario = usuario
+            cursor.execute('SELECT rol FROM Usuario WHERE nombre_usuario = ?', (nombre_usuario,))
             resultado = cursor.fetchone()
             conn.close()
             
@@ -60,7 +65,12 @@ def require_api_role(role):
             # Verificar el rol
             conn = sqlite3.connect('gestor_de_tareas.db')
             cursor = conn.cursor()
-            cursor.execute('SELECT rol FROM Usuario WHERE nombre_usuario = ?', (session['usuario'],))
+            usuario = session.get('usuario')
+            if isinstance(usuario, dict):
+                nombre_usuario = usuario.get('nombre_usuario')
+            else:
+                nombre_usuario = usuario
+            cursor.execute('SELECT rol FROM Usuario WHERE nombre_usuario = ?', (nombre_usuario,))
             resultado = cursor.fetchone()
             conn.close()
             

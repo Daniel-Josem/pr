@@ -78,10 +78,32 @@ def register_error_handlers(app):
         user_info = get_user_info()
         request_info = get_request_info()
         
-        # Verificar si la URL contiene caracteres especiales o parece ser una URL malformada
+        # URLs que no necesitan logging (herramientas de desarrollo y archivos comunes)
+        urls_ignoradas = [
+            '/.well-known/appspecific/com.chrome.devtools.json',
+            '/static/css/bootstrap.min.css.map',
+            '/favicon.ico',
+            '/robots.txt',
+            '/sitemap.xml',
+            '/apple-touch-icon',
+            '/manifest.json'
+        ]
+        
+        # Verificar si la URL debe ser ignorada
         url_path = request.path
         
-        # Si la URL contiene caracteres especiales comunes de URLs malformadas
+        # Ignorar URLs de herramientas de desarrollo
+        if any(url_path.startswith(ignored) for ignored in urls_ignoradas):
+            return '', 404
+        
+        # Ignorar URLs que parecen ser spam o pruebas
+        if (url_path.startswith('/None') or 
+            len(url_path) > 100 or  # URLs muy largas
+            any(char in url_path for char in ['sijdjcip', 'fífosnviónd', 'kdfwpajfidjsck']) or  # Caracteres sospechosos
+            url_path.count('%') > 3):  # URLs con muchos caracteres codificados
+            return '', 404
+        
+        # Verificar si la URL contiene caracteres especiales o parece ser una URL malformada
         caracteres_especiales = ['¿', '¡', 'ñ', 'á', 'é', 'í', 'ó', 'ú', 'ü']
         url_malformada = any(char in url_path for char in caracteres_especiales)
         

@@ -1,8 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file
+from fpdf import FPDF
+import tempfile
+from datetime import datetime
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash,check_password_hash
 import sqlite3
 import os
+from io import BytesIO
 from werkzeug.utils import secure_filename
 from app.session_decorators import lider_required, secure_route
 
@@ -104,7 +108,7 @@ def lideres():
 
     # Obtener información completa del usuario desde la BD
     usuario_info = conn.execute('SELECT * FROM Usuario WHERE id = ?', (usuario_id,)).fetchone()
-    
+
     if not usuario_info:
         flash('Error al cargar información del usuario', 'error')
         return redirect(url_for('login.login'))
@@ -112,15 +116,18 @@ def lideres():
     nombre_lider = usuario_info['nombre_completo']
     correo_lider = usuario_info['correo']
 
-    # Tareas solo del grupo del líder
-    tareas = conn.execute('SELECT * FROM tareas WHERE LOWER(curso_destino) = LOWER(?)', (grupo_lider,)).fetchall()
+    # 🔥 Convertir tareas a diccionarios
+    tareas_db = conn.execute('SELECT * FROM tareas WHERE LOWER(curso_destino) = LOWER(?)', (grupo_lider,)).fetchall()
+    tareas = [dict(tarea) for tarea in tareas_db]
 
-    # Proyectos solo del grupo del líder
-    proyectos = conn.execute('SELECT * FROM Proyecto WHERE LOWER(grupo) = LOWER(?)', (grupo_lider,)).fetchall()
+    # 🔥 Convertir proyectos a diccionarios
+    proyectos_db = conn.execute('SELECT * FROM Proyecto WHERE LOWER(grupo) = LOWER(?)', (grupo_lider,)).fetchall()
+    proyectos = [dict(proyecto) for proyecto in proyectos_db]
 
     # Solo usuarios del grupo con rol 'trabajador'
     usuarios_por_grupo = {grupo_lider: []}
-    usuarios = conn.execute('SELECT nombre_completo, nombre_usuario, correo, grupo, rol FROM Usuario WHERE LOWER(grupo) = LOWER(?)', (grupo_lider,)).fetchall()
+    usuarios_db = conn.execute('SELECT nombre_completo, nombre_usuario, correo, grupo, rol FROM Usuario WHERE LOWER(grupo) = LOWER(?)', (grupo_lider,)).fetchall()
+    usuarios = [dict(usuario) for usuario in usuarios_db]
 
     for usuario in usuarios:
         if usuario['rol'].lower().strip() == 'trabajador':
@@ -146,6 +153,7 @@ def lideres():
                            correo_usuario=correo_lider,
                            grupo_lider=grupo_lider,
                            cantidad_notificaciones=cantidad_notificaciones)
+
 
 # Editar tarea
 @lider.route('/editar_tarea', methods=['POST'])
@@ -297,20 +305,17 @@ def asignar_tarea_a_proyecto():
 @lider_required
 def ver_notificaciones():
     usuario = session['usuario']
+    id_lider = usuario['id']  # 🔥 Ya no necesitas buscarlo, ya lo tienes
+
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    # Obtener id del usuario actual (líder)
-    cur.execute('SELECT id FROM Usuario WHERE nombre_usuario = ?', (usuario,))
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        return 'Usuario no encontrado', 404
-    id_lider = row['id']
+
     # Obtener notificaciones para el líder
     cur.execute('SELECT * FROM notificaciones WHERE id_usuario = ? ORDER BY id DESC', (id_lider,))
     notificaciones = cur.fetchall()
     conn.close()
+
     return {'notificaciones': [dict(n) for n in notificaciones]}
 
 @lider.route('/notificaciones/marcar_leida', methods=['POST'])
@@ -320,12 +325,15 @@ def marcar_notificacion_leida():
     notificacion_id = data.get('id')
     if not notificacion_id:
         return {'success': False, 'error': 'ID requerido'}, 400
+
     conn = sqlite3.connect('gestor_de_tareas.db')
     cur = conn.cursor()
     cur.execute('UPDATE notificaciones SET leido = 1 WHERE id = ?', (notificacion_id,))
     conn.commit()
     conn.close()
+
     return {'success': True}
+
 
 @lider.route('/api/tarea/<int:tarea_id>/archivos')
 @lider_required
@@ -407,19 +415,20 @@ def obtener_archivos_tarea(tarea_id):
 @lider.route('/obtener_perfil_lider')
 @lider_required
 def obtener_perfil_lider():
+    if 'usuario_id' not in session:
+        return jsonify({'success': False, 'message': 'Sesión expirada'})
+
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
 
     usuario_id = session.get('usuario_id')
     usuario_sesion = session.get('usuario')
-    
-    # Obtener nombre de usuario desde la sesión
+
     if isinstance(usuario_sesion, dict):
         nombre_usuario = usuario_sesion.get('nombre_usuario')
     else:
         nombre_usuario = usuario_sesion
-    
-    # Obtener información completa del usuario
+
     user = conn.execute('SELECT * FROM Usuario WHERE id = ?', (usuario_id,)).fetchone()
     conn.close()
 
@@ -433,21 +442,22 @@ def obtener_perfil_lider():
             'descripcion': user['descripcion'] or ''
         })
     else:
-        return jsonify({'success': False})
-
+        return jsonify({'success': False, 'message': 'Usuario no encontrado'})
 
 @lider.route('/actualizar_perfil_lider', methods=['POST'])
 @lider_required
 def actualizar_perfil_lider():
+    if 'usuario_id' not in session:
+        return jsonify({'success': False, 'message': 'Sesión expirada'})
+
     usuario_id = session.get('usuario_id')
     usuario_sesion = session.get('usuario')
-    
-    # Obtener nombre de usuario desde la sesión
+
     if isinstance(usuario_sesion, dict):
         nombre_usuario = usuario_sesion.get('nombre_usuario')
     else:
         nombre_usuario = usuario_sesion
-    
+
     nombre = request.form['nombre']
     correo = request.form['correo']
     telefono = request.form.get('telefono', '')
@@ -461,14 +471,12 @@ def actualizar_perfil_lider():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    # Verificar si el usuario existe
     user = cursor.execute('SELECT * FROM Usuario WHERE id = ?', (usuario_id,)).fetchone()
 
     if not user:
         conn.close()
         return jsonify({'success': False, 'message': 'Usuario no encontrado'})
 
-    # Si el usuario quiere cambiar la contraseña
     if contraseña_actual and nueva_contraseña and confirmar_contraseña:
         if nueva_contraseña != confirmar_contraseña:
             conn.close()
@@ -478,24 +486,125 @@ def actualizar_perfil_lider():
             conn.close()
             return jsonify({'success': False, 'message': 'La contraseña actual es incorrecta'})
 
-        # Cambiar contraseña
         nueva_contraseña_hash = generate_password_hash(nueva_contraseña)
-        cursor.execute('''UPDATE Usuario SET nombre_completo = ?, correo = ?, telefono = ?, 
-                         direccion = ?, descripcion = ?, contraseña = ? WHERE id = ?''', 
-                       (nombre, correo, telefono, direccion, descripcion, nueva_contraseña_hash, usuario_id))
+        cursor.execute('''
+            UPDATE Usuario 
+            SET nombre_completo = ?, correo = ?, telefono = ?, direccion = ?, descripcion = ?, contraseña = ?
+            WHERE id = ?
+        ''', (nombre, correo, telefono, direccion, descripcion, nueva_contraseña_hash, usuario_id))
     else:
-        # Solo actualizar información del perfil
-        cursor.execute('''UPDATE Usuario SET nombre_completo = ?, correo = ?, telefono = ?, 
-                         direccion = ?, descripcion = ? WHERE id = ?''', 
-                       (nombre, correo, telefono, direccion, descripcion, usuario_id))
+        cursor.execute('''
+            UPDATE Usuario 
+            SET nombre_completo = ?, correo = ?, telefono = ?, direccion = ?, descripcion = ?
+            WHERE id = ?
+        ''', (nombre, correo, telefono, direccion, descripcion, usuario_id))
 
     conn.commit()
     conn.close()
-    
+
     return jsonify({'success': True, 'message': 'Perfil actualizado correctamente'})
 
 
+from datetime import datetime
 
+@lider.route('/calendario')
+def calendario():
+    mes = request.args.get('mes', datetime.now().month)
+    anio = request.args.get('anio', datetime.now().year)
+
+    conexion = sqlite3.connect('gestor_de_tareas.db')
+    conexion.row_factory = sqlite3.Row
+    cursor = conexion.cursor()
+
+    cursor.execute('''
+        SELECT id, titulo, descripcion, fecha_vencimiento, prioridad, estado
+        FROM tareas
+        WHERE strftime('%m', fecha_vencimiento) = ? AND strftime('%Y', fecha_vencimiento) = ?
+    ''', (f'{int(mes):02d}', str(anio)))
+
+    tareas = [dict(fila) for fila in cursor.fetchall()]
+    conexion.close()
+
+    return render_template('lider.html', tareas=tareas, mes=mes, anio=anio)
+
+
+@lider.route('/descargar_informe')
+def descargar_informe():
+    if 'usuario' not in session:
+        return redirect(url_for('login.login'))
+
+    grupo = session.get('grupo')
+    hoy = datetime.now()
+    primer_dia = f"{hoy.year}-{hoy.month:02}-01"
+    if hoy.month == 12:
+        siguiente_mes = f"{hoy.year + 1}-01-01"
+    else:
+        siguiente_mes = f"{hoy.year}-{hoy.month + 1:02}-01"
+
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT t.titulo, t.descripcion, t.fecha_registro, t.fecha_vencimiento, t.estado, p.nombre AS proyecto
+        FROM tareas t
+        LEFT JOIN Proyecto p ON t.id_proyecto = p.id
+        WHERE LOWER(t.curso_destino) = LOWER(?) AND t.fecha_vencimiento >= ? AND t.fecha_vencimiento < ?
+    """, (grupo, primer_dia, siguiente_mes))
+
+    tareas = cursor.fetchall()
+    conn.close()
+
+    nombre_proyecto = tareas[0]['proyecto'] if tareas and tareas[0]['proyecto'] else 'Proyecto no especificado'
+
+    pdf = FPDF()
+    pdf.add_page()
+
+    # 🔥 Dibujar fondo celeste claro en toda la página
+    pdf.set_fill_color(230, 240, 255)
+    pdf.rect(0, 0, 210, 297, 'F')
+
+    # 🔥 Insertar logo
+    pdf.image('static/avatars/barra_lateral.png', x=10, y=8, w=30)
+
+    # 🔥 Título centrado
+    pdf.set_font('Arial', 'B', 16)
+    pdf.ln(10)
+    pdf.cell(0, 10, 'Informe de Tareas', ln=True, align='C')
+    pdf.ln(5)
+
+    # 🔥 Información del grupo y proyecto
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(0, 10, f'Grupo: {grupo}', ln=True, align='C')
+    pdf.cell(0, 10, f'Proyecto: {nombre_proyecto}', ln=True, align='C')
+    pdf.cell(0, 10, f'Mes: {hoy.strftime("%B %Y")}', ln=True, align='C')
+    pdf.ln(10)
+
+    if tareas:
+        pdf.set_fill_color(180, 210, 255)
+        pdf.set_font('Arial', 'B', 12)
+
+        # 🔥 Cabecera de la tabla
+        pdf.cell(40, 10, 'Título', 1, 0, 'C', 1)
+        pdf.cell(50, 10, 'Descripción', 1, 0, 'C', 1)
+        pdf.cell(30, 10, 'Fecha Reg.', 1, 0, 'C', 1)
+        pdf.cell(30, 10, 'Fecha Entrega', 1, 0, 'C', 1)
+        pdf.cell(30, 10, 'Estado', 1, 1, 'C', 1)
+
+        pdf.set_font('Arial', '', 12)
+        for tarea in tareas:
+            pdf.cell(40, 10, tarea["titulo"], 1, 0, 'C')
+            pdf.cell(50, 10, tarea["descripcion"], 1, 0, 'C')
+            pdf.cell(30, 10, tarea["fecha_registro"] if tarea["fecha_registro"] else 'N/A', 1, 0, 'C')
+            pdf.cell(30, 10, tarea["fecha_vencimiento"], 1, 0, 'C')
+            pdf.cell(30, 10, tarea["estado"], 1, 1, 'C')
+    else:
+        pdf.cell(0, 10, 'No hay tareas asignadas este mes.', ln=True, align='C')
+
+    pdf_bytes = pdf.output(dest='S').encode('latin-1')
+    pdf_output = BytesIO(pdf_bytes)
+
+    return send_file(pdf_output, as_attachment=True, download_name='informe_proyecto.pdf', mimetype='application/pdf')
 
 
 

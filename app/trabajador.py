@@ -50,13 +50,13 @@ def trabajador():
     usuario_row = None
     if usuario_id is not None:
         usuario_row = conn.execute(
-            'SELECT nombre_completo, avatar_url, acerca_de_mi FROM Usuario WHERE id = ?', (usuario_id,)
+            'SELECT nombre_completo FROM Usuario WHERE id = ?', (usuario_id,)
         ).fetchone()
         
     if usuario_row:
         nombre_usuario = usuario_row['nombre_completo'] or 'Usuario'
-        avatar_url = usuario_row['avatar_url'] or '/static/avatars/perfil_predeterminado.png'
-        acerca_de_mi = usuario_row['acerca_de_mi'] or ''
+        avatar_url = '/static/avatars/perfil_predeterminado.png'
+        acerca_de_mi = ''
     else:
         nombre_usuario = 'Usuario'
         avatar_url = '/static/avatars/perfil_predeterminado.png'

@@ -43,6 +43,13 @@ def crear_usuarios_prueba():
 # Ejecutar una vez al importar este archivo
 crear_usuarios_prueba()
 
+#--- Configuracion de rutas para imagenes de chat --
+RUTA_IMAGENES_CHAT = 'static/chat_images'
+
+# Asegurar que exista la carpeta para imágenes de chat
+if not os.path.exists(RUTA_IMAGENES_CHAT):
+    os.makedirs(RUTA_IMAGENES_CHAT)
+
 #Contador de lideres activos
 @api_blueprint.route('/api/lider/count')
 @api_admin_required
@@ -542,3 +549,130 @@ def obtener_progreso_proyecto(nombre):
         "progreso": porcentaje,
         "pendientes": tareas_pendientes
     })
+#Ruta de chatbox
+@api_blueprint.route('/api/chat/lista')
+def obtener_lista_chats():
+    usuario_id = session.get('usuario_id')
+    if not usuario_id:
+        return jsonify([])
+
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT DISTINCT u.id, u.nombre_completo
+        FROM mensajes m
+        JOIN Usuario u ON u.id = m.receptor_id OR u.id = m.emisor_id
+        WHERE (m.emisor_id = ? OR m.receptor_id = ?)
+        AND u.rol = 'lider' AND u.id != ?
+        ORDER BY u.nombre_completo
+    ''', (usuario_id, usuario_id, usuario_id))
+
+    usuarios = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(u) for u in usuarios])
+
+
+@api_blueprint.route('/api/chat/<int:receptor_id>')
+def obtener_mensajes_chat(receptor_id):
+    emisor_id = session.get('usuario_id')
+    if not emisor_id:
+        return jsonify([])
+
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT * FROM mensajes
+        WHERE (emisor_id = ? AND receptor_id = ?)
+           OR (emisor_id = ? AND receptor_id = ?)
+        ORDER BY fecha ASC
+    ''', (emisor_id, receptor_id, receptor_id, emisor_id))
+
+    mensajes = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(m) for m in mensajes])
+
+
+@api_blueprint.route('/api/chat/enviar', methods=['POST'])
+def enviar_mensaje_texto():
+    data = request.get_json()
+    emisor_id = session.get('usuario_id')
+    receptor_id = data.get('receptor_id')
+    mensaje = data.get('mensaje')
+
+    if not emisor_id or not receptor_id or not mensaje:
+        return jsonify({'error': 'Datos incompletos'}), 400
+
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT nombre_completo FROM Usuario WHERE id = ?', (emisor_id,))
+    emisor_nombre = cursor.fetchone()[0]
+
+    cursor.execute('''
+        INSERT INTO mensajes (emisor_id, emisor, receptor_id, mensaje, tipo)
+        VALUES (?, ?, ?, ?, 'texto')
+    ''', (emisor_id, emisor_nombre, receptor_id, mensaje))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@api_blueprint.route('/api/chat/enviar-imagen', methods=['POST'])
+def enviar_imagen():
+    emisor_id = session.get('usuario_id')
+    receptor_id = request.form.get('receptor_id')
+    imagen = request.files.get('imagen')
+
+    if not emisor_id or not receptor_id or not imagen:
+        return jsonify({'error': 'Datos faltantes'}), 400
+
+    nombre_seguro = secure_filename(imagen.filename)
+    ruta_archivo = os.path.join(RUTA_IMAGENES_CHAT, nombre_seguro)
+    imagen.save(ruta_archivo)
+    url_imagen = f'/{ruta_archivo}'
+
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT nombre_completo FROM Usuario WHERE id = ?', (emisor_id,))
+    emisor_nombre = cursor.fetchone()[0]
+
+    cursor.execute('''
+        INSERT INTO mensajes (emisor_id, emisor, receptor_id, tipo, imagen_url)
+        VALUES (?, ?, ?, 'imagen', ?)
+    ''', (emisor_id, emisor_nombre, receptor_id, url_imagen))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@api_blueprint.route('/api/lideres/chat', methods=['GET'])
+def obtener_lideres_para_chat():
+    usuario_id = session.get('usuario_id')
+    if not usuario_id:
+        return jsonify([])
+
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT id, nombre_completo, foto 
+        FROM Usuario 
+        WHERE rol = 'lider' AND estado = 'activo' AND id != ?
+    ''', (usuario_id,))
+    lideres = cursor.fetchall()
+    conn.close()
+
+    return jsonify([dict(l) for l in lideres])
+
+@api_blueprint.route('/api/administrador/chat')
+def obtener_info_admin_para_lider():
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, nombre_completo, foto FROM Usuario WHERE rol = 'admin' LIMIT 1")
+    admin = cursor.fetchone()
+    conn.close()
+    return jsonify(dict(admin) if admin else {})

@@ -553,6 +553,104 @@ body {
 }
 .stickers-popover img:hover { filter: brightness(1.2) drop-shadow(0 2px 4px #00ffcf75); }
 
+.chat-messenger {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 300px;
+  height: 70vh;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+.chat-messenger-header {
+  background: #198754;
+  color: white;
+  padding: 10px;
+  font-weight: bold;
+}
+
+.chat-messenger-body {
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.chat-list-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.chat-avatar-mini {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.chat-popup {
+  position: fixed;
+  bottom: 80px;
+  right: 340px;
+  width: 300px;
+  height: 70vh;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 1001;
+}
+
+.chat-popup-header {
+  background: #0d6efd;
+  color: white;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.chat-popup-body {
+  padding: 10px;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.chat-popup-form {
+  padding: 10px;
+  gap: 5px;
+}
+
+.chat-bubble {
+  background: #f1f1f1;
+  padding: 8px;
+  border-radius: 8px;
+  max-width: 80%;
+}
+
+.chat-img-click {
+  max-width: 150px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+#chat-popup-form button[type="submit"] {
+  width: 80px;
+}
+
 /* Boton de editar estudiante */
 .btn-miverde {
   background: #157347;

@@ -109,40 +109,51 @@
       </div>
       <div id="mainContent"></div>
     </div>
+ 
+  <!--Ruta para configuar el chatbox-->
+ <!-- Botón flotante para abrir la lista de chats -->
+<button id="chat-fab" class="chat-fab shadow-lg">
+  <i class="bi bi-chat-dots-fill"></i>
+</button>
 
-    <button id="chat-fab" class="chat-fab shadow-lg">
-      <i class="bi bi-chat-dots-fill"></i>
-    </button>
+<!-- Lista de chats tipo Messenger -->
+<div id="chat-messenger" class="chat-messenger shadow-lg" style="display: none; max-height: 80vh;">
+  <div class="chat-messenger-header bg-success text-white p-2 d-flex justify-content-between align-items-center">
+    <span class="fw-bold">Chats con Líderes</span>
+    <button class="btn-close text-white" id="close-chat-messenger"></button>
+  </div>
+  <div id="chat-list" class="chat-messenger-body p-2 overflow-auto" style="max-height: 70vh;">
+    <!-- Aquí se insertan dinámicamente los chats -->
+  </div>
+</div>
 
-    <div id="chatbox-float" class="chatbox-float shadow-lg">
-      <div class="chatbox-header bg-gradient">
-        <span>Chat con Lideres</span>
-        <button class="btn-close" id="chat-close"></button>
-      </div>
-      <div class="chatbox-body">
-        <select class="form-select mb-2" id="chatbox-profesor2">
-          <option disabled selected value="">Selecciona un Lider</option>
-          <option value="1">Lider 1</option>
-          <option value="2">Lider 2</option>
-        </select>
-        <div class="chatbox-messages" id="chatbox-messages2"></div>
-      </div>
-      <form id="chatbox-form2" class="chatbox-form d-flex align-items-center mt-2">
-        <input type="text" class="form-control me-2" id="chatbox-input2" placeholder="Escribe un mensaje..." autocomplete="off" />
-        <label class="btn btn-light btn-sm mb-0 me-1" for="chat-img-upload">
-          <i class="bi bi-image"></i>
-          <input type="file" id="chat-img-upload" accept="image/*" style="display:none" />
-        </label>
-        <button type="button" class="btn btn-light btn-sm mb-0 me-1" id="chat-sticker-btn">
-          <i class="bi bi-emoji-smile"></i>
-        </button>
-        <button type="button" class="btn btn-light btn-sm mb-0 me-1" id="chat-audio-btn">
-          <i class="bi bi-mic"></i>
-        </button>
-        <button type="submit" class="btn btn-success btn-sm">Enviar</button>
-      </form>
-      <div id="stickers-popover" class="stickers-popover shadow"></div>
-    </div>
+<!-- Chat flotante con el líder -->
+<div id="chat-popup" class="chat-popup shadow-lg" style="display: none; max-height: 80vh; flex-direction: column;">
+  <div class="chat-popup-header bg-success text-white d-flex align-items-center p-2">
+    <img id="chat-avatar" src="/static/avatars/default.png" class="chat-avatar me-2 rounded-circle" width="32" height="32" />
+    <span id="chat-nombre" class="fw-bold flex-grow-1"></span>
+    <button class="btn btn-sm text-white me-1" id="minimizar-chat-popup">−</button>
+    <button class="btn-close text-white" onclick="cerrarChatPopup()"></button>
+  </div>
+
+  <div id="chat-popup-mensajes" class="chat-popup-body p-2" style="flex-grow: 1; overflow-y: auto;">
+    <!-- Aquí van los mensajes -->
+  </div>
+
+  <form id="chat-popup-form" class="chat-popup-form d-flex p-2 border-top">
+    <input type="text" class="form-control me-2" id="chat-popup-input" placeholder="Aa" autocomplete="off" />
+    
+    <!-- Botón para imagen -->
+    <input type="file" id="chat-popup-img" accept="image/*" style="display: none;" />
+    <label for="chat-popup-img" class="btn btn-light btn-sm mb-0 me-1" title="Enviar imagen">
+      <i class="bi bi-image"></i>
+    </label>
+
+    <button type="submit" class="btn btn-success btn-sm">Enviar</button>
+  </form>
+</div>
+
+
 
     <div class="modal fade" id="modalProfesorTareas" tabindex="-1" aria-labelledby="modalProfesorTareasLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg">

@@ -581,3 +581,126 @@ document.getElementById('formPerfilLider').addEventListener('submit', function (
         alert('Error al actualizar perfil');
     });
 });
+let usuarioChatActual = null;
+
+function cargarListaChats() {
+  fetch('/api/administrador/chat')  // Esta ruta debe devolver info del admin
+    .then(res => res.json())
+    .then(admin => {
+      const lista = document.getElementById('chat-list');
+      lista.innerHTML = '';
+
+      const div = document.createElement('div');
+      div.classList.add('chat-list-item');
+      div.innerHTML = `
+        <img src="${admin.foto || '/static/avatars/default.png'}" class="chat-avatar-mini">
+        <div>
+          <div><strong>${admin.nombre_completo}</strong></div>
+          <small>Haz clic para abrir el chat</small>
+        </div>`;
+      div.onclick = () => abrirChatPopup(admin.id, admin.nombre_completo, admin.foto);
+      lista.appendChild(div);
+    });
+}
+
+function abrirChatPopup(id, nombre, foto) {
+  usuarioChatActual = id;
+  document.getElementById('chat-messenger').style.display = 'none';
+  document.getElementById('chat-popup').style.display = 'flex';
+  document.getElementById('chat-nombre').textContent = nombre;
+  document.getElementById('chat-avatar').src = foto || '/static/avatars/default.png';
+  cargarMensajesPopup(id);
+}
+
+function cerrarChatPopup() {
+  document.getElementById('chat-popup').style.display = 'none';
+  document.getElementById('chat-popup-mensajes').innerHTML = '';
+  usuarioChatActual = null;
+}
+
+function cargarMensajesPopup(receptorId) {
+  fetch(`/api/chat/${receptorId}`)
+    .then(res => res.json())
+    .then(mensajes => {
+      const contenedor = document.getElementById('chat-popup-mensajes');
+      contenedor.innerHTML = '';
+      mensajes.forEach(m => {
+        const div = document.createElement('div');
+        div.classList.add('chat-bubble');
+
+        if (m.tipo === 'imagen') {
+          const img = document.createElement('img');
+          img.src = m.imagen_url;
+          img.classList.add('chat-img-click');
+          img.onclick = () => mostrarImagenGrande(img.src);
+          div.innerHTML = '';
+          div.appendChild(img);
+        } else {
+          div.textContent = `${m.emisor === 'lider' ? 'Tú' : m.emisor}: ${m.mensaje}`;
+        }
+
+        contenedor.appendChild(div);
+      });
+      contenedor.scrollTop = contenedor.scrollHeight;
+    });
+}
+
+document.getElementById('chat-popup-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const input = document.getElementById('chat-popup-input');
+  const mensaje = input.value.trim();
+  if (!mensaje || !usuarioChatActual) return;
+
+  fetch('/api/chat/enviar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ receptor_id: usuarioChatActual, mensaje })
+  }).then(() => {
+    input.value = '';
+    cargarMensajesPopup(usuarioChatActual);
+  });
+});
+
+document.getElementById('chat-popup-img').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file || !usuarioChatActual) return;
+  const formData = new FormData();
+  formData.append('imagen', file);
+  formData.append('receptor_id', usuarioChatActual);
+
+  fetch('/api/chat/enviar-imagen', {
+    method: 'POST',
+    body: formData
+  }).then(() => cargarMensajesPopup(usuarioChatActual));
+});
+
+function mostrarImagenGrande(src) {
+  const modal = document.createElement("div");
+  modal.style.position = "fixed";
+  modal.style.top = 0;
+  modal.style.left = 0;
+  modal.style.width = "100vw";
+  modal.style.height = "100vh";
+  modal.style.background = "rgba(0,0,0,0.8)";
+  modal.style.display = "flex";
+  modal.style.alignItems = "center";
+  modal.style.justifyContent = "center";
+  modal.style.zIndex = 9999;
+  modal.innerHTML = `<img src="${src}" style="max-width:90%; max-height:90%; border-radius: 10px;">`;
+  modal.onclick = () => modal.remove();
+  document.body.appendChild(modal);
+}
+
+document.getElementById('minimizar-chat-popup').addEventListener('click', () => {
+  document.getElementById('chat-popup').style.display = 'none';
+  document.getElementById('chat-messenger').style.display = 'flex';
+});
+
+document.getElementById('chat-fab').addEventListener('click', () => {
+  cargarListaChats();
+  document.getElementById('chat-messenger').style.display = 'flex';
+});
+
+document.getElementById('close-chat-messenger').addEventListener('click', () => {
+  document.getElementById('chat-messenger').style.display = 'none';
+});

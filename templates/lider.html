@@ -483,6 +483,44 @@
                 </div>
             </div>
             </div>
+
+            <!--Chat box para comunicarse con el admin y usuario-->
+    <!-- Botón flotante para abrir la lista de chats -->
+            <button id="chat-fab" class="chat-fab shadow-lg">
+            <i class="bi bi-chat-dots-fill"></i>
+            </button>
+
+            <!-- Lista de chats tipo Messenger -->
+            <div id="chat-messenger" class="chat-messenger shadow-lg" style="display: none; max-height: 80vh;">
+            <div class="chat-messenger-header bg-success text-white p-2 d-flex justify-content-between align-items-center">
+                <span class="fw-bold">Chats con Administrador</span>
+                <button class="btn-close text-white" id="close-chat-messenger"></button>
+            </div>
+            <div id="chat-list" class="chat-messenger-body p-2 overflow-auto" style="max-height: 70vh;">
+                <!-- Aquí se insertan dinámicamente los chats -->
+            </div>
+            </div>
+
+            <!-- Chat flotante -->
+            <div id="chat-popup" class="chat-popup shadow-lg" style="display: none; max-height: 80vh; flex-direction: column;">
+            <div class="chat-popup-header bg-success text-white d-flex align-items-center p-2">
+                <img id="chat-avatar" src="/static/avatars/default.png" class="chat-avatar me-2 rounded-circle" width="32" height="32" />
+                <span id="chat-nombre" class="fw-bold flex-grow-1"></span>
+                <button class="btn btn-sm text-white me-1" id="minimizar-chat-popup">−</button>
+                <button class="btn-close text-white" onclick="cerrarChatPopup()"></button>
+            </div>
+
+            <div id="chat-popup-mensajes" class="chat-popup-body p-2" style="flex-grow: 1; overflow-y: auto;"></div>
+
+            <form id="chat-popup-form" class="chat-popup-form d-flex p-2 border-top">
+                <input type="text" class="form-control me-2" id="chat-popup-input" placeholder="Aa" autocomplete="off" />
+                <input type="file" id="chat-popup-img" accept="image/*" style="display: none;" />
+                <label for="chat-popup-img" class="btn btn-light btn-sm mb-0 me-1" title="Enviar imagen">
+                <i class="bi bi-image"></i>
+                </label>
+                <button type="submit" class="btn btn-success btn-sm">Enviar</button>
+            </form>
+            </div>
            <!-- Calendario -->
 <main class="p-4 seccion" id="contenido-calendario" style="display: none;">
     <section class="calendar d-flex flex-column flex-grow-1" style="min-height:0;">
@@ -616,6 +654,45 @@
             });
         });
     </script>
+
+    <!--Chat box para comunicarse con el admin y usuario-->
+    <!-- Botón flotante para abrir la lista de chats -->
+<button id="chat-fab" class="chat-fab shadow-lg">
+  <i class="bi bi-chat-dots-fill"></i>
+</button>
+
+<!-- Lista de chats tipo Messenger -->
+<div id="chat-messenger" class="chat-messenger shadow-lg" style="display: none; max-height: 80vh;">
+  <div class="chat-messenger-header bg-success text-white p-2 d-flex justify-content-between align-items-center">
+    <span class="fw-bold">Chats con Administrador</span>
+    <button class="btn-close text-white" id="close-chat-messenger"></button>
+  </div>
+  <div id="chat-list" class="chat-messenger-body p-2 overflow-auto" style="max-height: 70vh;">
+    <!-- Aquí se insertan dinámicamente los chats -->
+  </div>
+</div>
+
+<!-- Chat flotante -->
+<div id="chat-popup" class="chat-popup shadow-lg" style="display: none; max-height: 80vh; flex-direction: column;">
+  <div class="chat-popup-header bg-success text-white d-flex align-items-center p-2">
+    <img id="chat-avatar" src="/static/avatars/default.png" class="chat-avatar me-2 rounded-circle" width="32" height="32" />
+    <span id="chat-nombre" class="fw-bold flex-grow-1"></span>
+    <button class="btn btn-sm text-white me-1" id="minimizar-chat-popup">−</button>
+    <button class="btn-close text-white" onclick="cerrarChatPopup()"></button>
+  </div>
+
+  <div id="chat-popup-mensajes" class="chat-popup-body p-2" style="flex-grow: 1; overflow-y: auto;"></div>
+
+  <form id="chat-popup-form" class="chat-popup-form d-flex p-2 border-top">
+    <input type="text" class="form-control me-2" id="chat-popup-input" placeholder="Aa" autocomplete="off" />
+    <input type="file" id="chat-popup-img" accept="image/*" style="display: none;" />
+    <label for="chat-popup-img" class="btn btn-light btn-sm mb-0 me-1" title="Enviar imagen">
+      <i class="bi bi-image"></i>
+    </label>
+    <button type="submit" class="btn btn-success btn-sm">Enviar</button>
+  </form>
+</div>
+
 </body>
 
 </html>

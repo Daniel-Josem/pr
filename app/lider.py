@@ -453,11 +453,6 @@ def actualizar_perfil_lider():
     usuario_id = session.get('usuario_id')
     usuario_sesion = session.get('usuario')
 
-    if isinstance(usuario_sesion, dict):
-        nombre_usuario = usuario_sesion.get('nombre_usuario')
-    else:
-        nombre_usuario = usuario_sesion
-
     nombre = request.form['nombre']
     correo = request.form['correo']
     telefono = request.form.get('telefono', '')
@@ -467,12 +462,20 @@ def actualizar_perfil_lider():
     nueva_contraseña = request.form.get('nueva_contraseña', '')
     confirmar_contraseña = request.form.get('confirmar_contraseña', '')
 
+    nueva_foto = request.files.get('imagen')
+    nombre_foto = None
+
+    if nueva_foto and nueva_foto.filename != '':
+        nombre_archivo = secure_filename(nueva_foto.filename)
+        ruta_archivo = os.path.join('static', 'avatars', nombre_archivo)
+        nueva_foto.save(ruta_archivo)
+        nombre_foto = nombre_archivo
+
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
     user = cursor.execute('SELECT * FROM Usuario WHERE id = ?', (usuario_id,)).fetchone()
-
     if not user:
         conn.close()
         return jsonify({'success': False, 'message': 'Usuario no encontrado'})
@@ -481,29 +484,31 @@ def actualizar_perfil_lider():
         if nueva_contraseña != confirmar_contraseña:
             conn.close()
             return jsonify({'success': False, 'message': 'Las contraseñas nuevas no coinciden'})
-
         if not check_password_hash(user['contraseña'], contraseña_actual):
             conn.close()
             return jsonify({'success': False, 'message': 'La contraseña actual es incorrecta'})
-
         nueva_contraseña_hash = generate_password_hash(nueva_contraseña)
+    else:
+        nueva_contraseña_hash = user['contraseña']
+
+    # 🔥 Actualizar perfil con o sin imagen
+    if nombre_foto:
+        cursor.execute('''
+            UPDATE Usuario 
+            SET nombre_completo = ?, correo = ?, telefono = ?, direccion = ?, descripcion = ?, contraseña = ?, foto = ?
+            WHERE id = ?
+        ''', (nombre, correo, telefono, direccion, descripcion, nueva_contraseña_hash, nombre_foto, usuario_id))
+    else:
         cursor.execute('''
             UPDATE Usuario 
             SET nombre_completo = ?, correo = ?, telefono = ?, direccion = ?, descripcion = ?, contraseña = ?
             WHERE id = ?
         ''', (nombre, correo, telefono, direccion, descripcion, nueva_contraseña_hash, usuario_id))
-    else:
-        cursor.execute('''
-            UPDATE Usuario 
-            SET nombre_completo = ?, correo = ?, telefono = ?, direccion = ?, descripcion = ?
-            WHERE id = ?
-        ''', (nombre, correo, telefono, direccion, descripcion, usuario_id))
 
     conn.commit()
     conn.close()
 
     return jsonify({'success': True, 'message': 'Perfil actualizado correctamente'})
-
 
 from datetime import datetime
 

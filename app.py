@@ -190,7 +190,6 @@ def crear_tabla_usuario():
     tipo TEXT DEFAULT 'texto', 
     sticker TEXT, 
     imagen_url TEXT, 
-    audio_url TEXT,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );''')
 

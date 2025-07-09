@@ -804,7 +804,8 @@ def descargar_informe_admin():
     else:
         pdf.cell(0, 10, 'No hay tareas registradas este mes.', ln=True, align='C')
 
-    pdf_bytes = pdf.output(dest='S').encode('latin-1')
-    pdf_output = BytesIO(pdf_bytes)
-
+    pdf_data = pdf.output(dest='S')
+    if isinstance(pdf_data, str):
+        pdf_data = pdf_data.encode('latin-1')
+    pdf_output = BytesIO(pdf_data)
     return send_file(pdf_output, as_attachment=True, download_name='informe_general.pdf', mimetype='application/pdf')

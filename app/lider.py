@@ -44,7 +44,7 @@ def limpiar_archivos_huerfanos():
 
 # Crear tarea
 @lider.route('/crear_tarea', methods=['POST'])
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def crear_tarea():
 
     conn = sqlite3.connect('gestor_de_tareas.db')
@@ -157,7 +157,7 @@ def lideres():
 
 # Editar tarea
 @lider.route('/editar_tarea', methods=['POST'])
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def editar_tarea():
 
     id_tarea = request.form['id']
@@ -220,7 +220,7 @@ def editar_tarea():
 
 # Eliminar tarea
 @lider.route('/eliminar_tarea/<int:id>', methods=['POST'])
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def eliminar_tarea(id):
 
     conn = sqlite3.connect('gestor_de_tareas.db')
@@ -248,7 +248,7 @@ def eliminar_tarea(id):
     return redirect(url_for('lider.lideres'))
 
 @lider.route('/crear_proyecto', methods=['POST'])
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def crear_proyecto():
 
     nombre = request.form['nombre']
@@ -268,7 +268,7 @@ def crear_proyecto():
     return redirect(url_for('lider.lideres'))  # Esto debe estar así para recargar la vista
 
 @lider.route('/eliminar_proyecto/<int:id>', methods=['POST'])
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def eliminar_proyecto(id):
 
     conn = sqlite3.connect('gestor_de_tareas.db')
@@ -285,7 +285,7 @@ def eliminar_proyecto(id):
     return redirect(url_for('lider.lideres'))
 
 @lider.route('/asignar_tarea_a_proyecto', methods=['POST'])
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def asignar_tarea_a_proyecto():
 
     tarea_id = request.form['tarea_id']
@@ -302,10 +302,16 @@ def asignar_tarea_a_proyecto():
     return redirect(url_for('lider.lideres'))
 
 @lider.route('/notificaciones')
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def ver_notificaciones():
-    usuario = session['usuario']
-    id_lider = usuario['id']  # 🔥 Ya no necesitas buscarlo, ya lo tienes
+    usuario = session.get('usuario')
+    if isinstance(usuario, dict):
+        id_lider = usuario.get('id')
+    else:
+        id_lider = session.get('usuario_id')
+    
+    if not id_lider:
+        return jsonify({'error': 'Sesión inválida'}), 401
 
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
@@ -319,7 +325,7 @@ def ver_notificaciones():
     return {'notificaciones': [dict(n) for n in notificaciones]}
 
 @lider.route('/notificaciones/marcar_leida', methods=['POST'])
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def marcar_notificacion_leida():
     data = request.get_json()
     notificacion_id = data.get('id')
@@ -336,7 +342,7 @@ def marcar_notificacion_leida():
 
 
 @lider.route('/api/tarea/<int:tarea_id>/archivos')
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def obtener_archivos_tarea(tarea_id):
 
     conn = sqlite3.connect('gestor_de_tareas.db')
@@ -413,45 +419,54 @@ def obtener_archivos_tarea(tarea_id):
         conn.close()
 
 @lider.route('/obtener_perfil_lider')
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def obtener_perfil_lider():
-    if 'usuario_id' not in session:
-        return jsonify({'success': False, 'message': 'Sesión expirada'})
+    print(f"DEBUG obtener_perfil_lider - session = {dict(session)}")
+    
+    try:
+        if 'usuario_id' not in session:
+            print("DEBUG: No hay usuario_id en la sesión")
+            return jsonify({'success': False, 'message': 'Sesión expirada'})
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+        conn = sqlite3.connect('gestor_de_tareas.db')
+        conn.row_factory = sqlite3.Row
 
-    usuario_id = session.get('usuario_id')
-    usuario_sesion = session.get('usuario')
+        usuario_id = session.get('usuario_id')
+        user = conn.execute('SELECT * FROM Usuario WHERE id = ?', (usuario_id,)).fetchone()
+        conn.close()
 
-    if isinstance(usuario_sesion, dict):
-        nombre_usuario = usuario_sesion.get('nombre_usuario')
-    else:
-        nombre_usuario = usuario_sesion
-
-    user = conn.execute('SELECT * FROM Usuario WHERE id = ?', (usuario_id,)).fetchone()
-    conn.close()
-
-    if user:
-        return jsonify({
-            'success': True, 
-            'nombre': user['nombre_completo'], 
-            'correo': user['correo'],
-            'telefono': user['telefono'] or '',
-            'direccion': user['direccion'] or '',
-            'descripcion': user['descripcion'] or ''
-        })
-    else:
-        return jsonify({'success': False, 'message': 'Usuario no encontrado'})
+        if user:
+            print(f"DEBUG: Usuario encontrado correctamente")
+            return jsonify({
+                'success': True, 
+                'nombre': user['nombre_completo'] or '', 
+                'correo': user['correo'] or '',
+                'telefono': user['telefono'] or '',
+                'direccion': user['direccion'] or '',
+                'descripcion': user['descripcion'] or ''
+            })
+        else:
+            print("DEBUG: Usuario no encontrado en la base de datos")
+            return jsonify({'success': False, 'message': 'Usuario no encontrado'})
+    
+    except Exception as e:
+        print(f"DEBUG: Error en obtener_perfil_lider: {e}")
+        return jsonify({'success': False, 'message': f'Error interno: {str(e)}'})
 
 @lider.route('/actualizar_perfil_lider', methods=['POST'])
-@lider_required
+@secure_route(allowed_roles=['lider'])
 def actualizar_perfil_lider():
+    print(f"DEBUG actualizar_perfil_lider - ANTES: session = {dict(session)}")
+    
     if 'usuario_id' not in session:
+        print("DEBUG: No hay usuario_id en la sesión")
         return jsonify({'success': False, 'message': 'Sesión expirada'})
 
     usuario_id = session.get('usuario_id')
     usuario_sesion = session.get('usuario')
+
+    print(f"DEBUG: usuario_id = {usuario_id}")
+    print(f"DEBUG: usuario_sesion = {usuario_sesion}")
 
     nombre = request.form['nombre']
     correo = request.form['correo']
@@ -507,7 +522,8 @@ def actualizar_perfil_lider():
 
     conn.commit()
     conn.close()
-
+    
+    print(f"DEBUG actualizar_perfil_lider - DESPUÉS: session = {dict(session)}")
     return jsonify({'success': True, 'message': 'Perfil actualizado correctamente'})
 
 from datetime import datetime
@@ -644,3 +660,15 @@ def descargar_informe():
     pdf_output = BytesIO(pdf_bytes)
 
     return send_file(pdf_output, as_attachment=True, download_name='informe_proyecto.pdf', mimetype='application/pdf')
+
+# Endpoint temporal para debugging
+@lider.route('/debug_perfil_lider')
+def debug_perfil_lider():
+    return jsonify({
+        'session_data': dict(session),
+        'session_keys': list(session.keys()),
+        'usuario_id': session.get('usuario_id'),
+        'usuario': session.get('usuario'),
+        'rol': session.get('rol')
+    })
+

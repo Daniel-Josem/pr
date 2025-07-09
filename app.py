@@ -284,13 +284,18 @@ def validate_session():
         '/administrador', '/lider', '/trabajador', 
         '/api/', '/actualizar_perfil', '/subir-archivo',
         '/crear_tarea', '/editar_tarea', '/eliminar_tarea',
-        '/crear_proyecto', '/eliminar_proyecto', '/notificaciones'
+        '/crear_proyecto', '/eliminar_proyecto', '/notificaciones',
+        '/obtener_perfil_lider', '/actualizar_perfil_lider'  # Agregar rutas del líder
     ]
     
     # Verificar si la ruta actual requiere autenticación
     requires_auth = any(request.path.startswith(route) for route in protected_routes)
     
     if requires_auth:
+        # Excluir cleanup-session de la validación
+        if request.path == '/api/cleanup-session':
+            return None
+        
         # Si hay sesión pero no tiene los campos necesarios, limpiar
         if 'usuario' in session and 'usuario_id' not in session:
             session.clear()
@@ -312,7 +317,7 @@ def validate_session():
                 session.clear()
                 flash('Tu sesión ha expirado o tu cuenta está inactiva.', 'error')
                 return redirect(url_for('login.login'))
-        except Exception:
+        except Exception as e:
             session.clear()
             return redirect(url_for('login.login'))
 
@@ -340,7 +345,16 @@ def validar_sesion():
 @app.route('/api/cleanup-session', methods=['POST'])
 def cleanup_session():
     """Endpoint para limpiar sesión cuando se cierra la ventana"""
-    session.clear()
+    # Solo limpiar si realmente se está cerrando la ventana
+    try:
+        data = request.get_json()
+        if data and data.get('action') == 'close':
+            session.clear()
+            return '', 204
+    except:
+        pass
+    
+    # Si no es una solicitud de cierre real, no hacer nada
     return '', 204
 
 

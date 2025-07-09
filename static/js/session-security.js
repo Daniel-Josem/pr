@@ -51,10 +51,30 @@
     // Validar sesión cada 5 minutos
     setInterval(validarSesion, 5 * 60 * 1000);
     
-    // Limpiar cache cuando se cierra la ventana
-    window.addEventListener('unload', function() {
-        // Enviar request para invalidar sesión si es necesario
-        navigator.sendBeacon('/api/cleanup-session');
+    // Variable para detectar si es una navegación interna
+    let isInternalNavigation = false;
+    
+    // Marcar navegaciones internas (enlaces dentro de la app)
+    document.addEventListener('click', function(e) {
+        if (e.target.tagName === 'A' && e.target.href && e.target.href.includes(window.location.origin)) {
+            isInternalNavigation = true;
+        }
+    });
+    
+    // Marcar envíos de formularios como navegación interna
+    document.addEventListener('submit', function(e) {
+        isInternalNavigation = true;
+    });
+    
+    // Limpiar sesión solo cuando realmente se cierra la ventana/pestaña
+    window.addEventListener('beforeunload', function(e) {
+        // Solo limpiar si no es navegación interna
+        if (!isInternalNavigation) {
+            // Esta es una salida real de la aplicación
+            navigator.sendBeacon('/api/cleanup-session', JSON.stringify({action: 'close'}));
+        }
+        // Reset para próxima navegación
+        setTimeout(() => { isInternalNavigation = false; }, 0);
     });
     
 })();

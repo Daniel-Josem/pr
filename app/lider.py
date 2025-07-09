@@ -541,44 +541,45 @@ def descargar_informe():
     grupo = session.get('grupo')
     hoy = datetime.now()
     primer_dia = f"{hoy.year}-{hoy.month:02}-01"
-    if hoy.month == 12:
-        siguiente_mes = f"{hoy.year + 1}-01-01"
-    else:
-        siguiente_mes = f"{hoy.year}-{hoy.month + 1:02}-01"
+    siguiente_mes = f"{hoy.year + 1}-01-01" if hoy.month == 12 else f"{hoy.year}-{hoy.month + 1:02}-01"
 
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT t.titulo, t.descripcion, t.fecha_registro, t.fecha_vencimiento, t.estado, p.nombre AS proyecto
+        SELECT t.titulo, t.descripcion, t.fecha_registro, t.fecha_vencimiento, t.estado, 
+               COALESCE(p.nombre, 'Proyecto no especificado') AS proyecto
         FROM tareas t
         LEFT JOIN Proyecto p ON t.id_proyecto = p.id
-        WHERE LOWER(t.curso_destino) = LOWER(?) AND t.fecha_vencimiento >= ? AND t.fecha_vencimiento < ?
+        WHERE LOWER(t.curso_destino) = LOWER(?) 
+          AND t.fecha_vencimiento >= ? AND t.fecha_vencimiento < ?
     """, (grupo, primer_dia, siguiente_mes))
 
     tareas = cursor.fetchall()
     conn.close()
 
-    nombre_proyecto = tareas[0]['proyecto'] if tareas and tareas[0]['proyecto'] else 'Proyecto no especificado'
+    nombre_proyecto = tareas[0]['proyecto'] if tareas else 'Proyecto no especificado'
 
     pdf = FPDF()
     pdf.add_page()
 
-    # 🔥 Dibujar fondo celeste claro en toda la página
+    # 🎨 Fondo
     pdf.set_fill_color(230, 240, 255)
     pdf.rect(0, 0, 210, 297, 'F')
 
-    # 🔥 Insertar logo
-    pdf.image('static/avatars/barra_lateral.png', x=10, y=8, w=30)
+    # 🖼️ Logo
+    try:
+        pdf.image('static/avatars/barra_lateral.png', x=10, y=8, w=30)
+    except:
+        pass
 
-    # 🔥 Título centrado
+    # 📄 Encabezado
     pdf.set_font('Arial', 'B', 16)
     pdf.ln(10)
     pdf.cell(0, 10, 'Informe de Tareas', ln=True, align='C')
     pdf.ln(5)
 
-    # 🔥 Información del grupo y proyecto
     pdf.set_font('Arial', '', 12)
     pdf.cell(0, 10, f'Grupo: {grupo}', ln=True, align='C')
     pdf.cell(0, 10, f'Proyecto: {nombre_proyecto}', ln=True, align='C')
@@ -586,23 +587,56 @@ def descargar_informe():
     pdf.ln(10)
 
     if tareas:
+        # 🧮 Ancho total de la tabla y márgenes para centrar
+        ancho_total = 40 + 70 + 30 + 30 + 30  # suma de anchos de columnas
+        margen_izquierdo = (210 - ancho_total) / 2
+        pdf.set_x(margen_izquierdo)
+
+        # Cabecera
         pdf.set_fill_color(180, 210, 255)
         pdf.set_font('Arial', 'B', 12)
-
-        # 🔥 Cabecera de la tabla
         pdf.cell(40, 10, 'Título', 1, 0, 'C', 1)
-        pdf.cell(50, 10, 'Descripción', 1, 0, 'C', 1)
+        pdf.cell(70, 10, 'Descripción', 1, 0, 'C', 1)
         pdf.cell(30, 10, 'Fecha Reg.', 1, 0, 'C', 1)
         pdf.cell(30, 10, 'Fecha Entrega', 1, 0, 'C', 1)
         pdf.cell(30, 10, 'Estado', 1, 1, 'C', 1)
 
-        pdf.set_font('Arial', '', 12)
+        pdf.set_font('Arial', '', 10)
+        line_height = 6
+
         for tarea in tareas:
-            pdf.cell(40, 10, tarea["titulo"], 1, 0, 'C')
-            pdf.cell(50, 10, tarea["descripcion"], 1, 0, 'C')
-            pdf.cell(30, 10, tarea["fecha_registro"] if tarea["fecha_registro"] else 'N/A', 1, 0, 'C')
-            pdf.cell(30, 10, tarea["fecha_vencimiento"], 1, 0, 'C')
-            pdf.cell(30, 10, tarea["estado"], 1, 1, 'C')
+            # Altura dinámica: calculamos cuál celda es más alta (título o descripción)
+            temp_pdf = FPDF()
+            temp_pdf.add_page()
+            temp_pdf.set_font('Arial', '', 10)
+            temp_pdf.set_xy(0, 0)
+            temp_pdf.multi_cell(40, line_height, tarea["titulo"])
+            h_titulo = temp_pdf.get_y()
+            temp_pdf.set_xy(0, 0)
+            temp_pdf.multi_cell(70, line_height, tarea["descripcion"])
+            h_desc = temp_pdf.get_y()
+            altura = max(h_titulo, h_desc)
+
+            # Comenzar desde el margen izquierdo centrado
+            pdf.set_x(margen_izquierdo)
+            x = pdf.get_x()
+            y = pdf.get_y()
+
+            # Título
+            pdf.multi_cell(40, line_height, tarea["titulo"], border=1, align='C')
+            x += 40
+            pdf.set_xy(x, y)
+
+            # Descripción
+            pdf.multi_cell(70, line_height, tarea["descripcion"], border=1, align='L')
+            x += 70
+            pdf.set_xy(x, y)
+
+            # Fechas y estado en celdas normales con misma altura
+            pdf.cell(30, altura, tarea["fecha_registro"] or 'N/A', border=1, align='C')
+            pdf.cell(30, altura, tarea["fecha_vencimiento"], border=1, align='C')
+            pdf.cell(30, altura, tarea["estado"], border=1, align='C')
+            pdf.ln(altura)
     else:
         pdf.cell(0, 10, 'No hay tareas asignadas este mes.', ln=True, align='C')
 
@@ -610,6 +644,3 @@ def descargar_informe():
     pdf_output = BytesIO(pdf_bytes)
 
     return send_file(pdf_output, as_attachment=True, download_name='informe_proyecto.pdf', mimetype='application/pdf')
-
-
-

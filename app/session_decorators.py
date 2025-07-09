@@ -1,3 +1,4 @@
+
 from functools import wraps
 from flask import redirect, url_for, flash, session, jsonify, make_response
 import sqlite3
@@ -120,7 +121,14 @@ def api_lider_required(f):
 
 def api_trabajador_required(f):
     """Decorador específico para APIs de trabajadores"""
-    return require_api_role('trabajador')(f)
+
+# Versión única: Decorador para APIs de trabajador que siempre responde JSON en caso de error
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'usuario' not in session or session.get('rol') != 'trabajador':
+            return jsonify({'error': 'Acceso no autorizado'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 def secure_route(allowed_roles=None):
     """
@@ -170,3 +178,12 @@ def secure_route(allowed_roles=None):
             return response
         return decorated_function
     return decorator
+
+def api_trabajador_required(f):
+    """Decorador específico para APIs de trabajadores"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'usuario' not in session or session.get('rol') != 'trabajador':
+            return jsonify({'error': 'Acceso no autorizado'}), 401
+        return f(*args, **kwargs)
+    return decorated_function

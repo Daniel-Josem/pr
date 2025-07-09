@@ -108,53 +108,261 @@
       </div> 
       </div>
       <div id="mainContent"></div>
+      <!-- Sección de Seguimiento (oculta por defecto) -->
+      <section id="seguimiento-informes" class="my-4" style="display:none;">
+        <main id="informeContainer" style="display: block;">
+            <div class="text-center mb-4">
+                <h2 class="mb-4">Informe General de Proyectos y Tareas</h2>
+                <label for="mesSeleccionado" class="form-label">Selecciona un mes:</label>
+                <select id="mesSeleccionado" class="form-select w-auto d-inline-block">
+                    <option value="01">Enero</option>
+                    <option value="02">Febrero</option>
+                    <option value="03">Marzo</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Mayo</option>
+                    <option value="06">Junio</option>
+                    <option value="07">Julio</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+                <button id="btnDescargarInforme" class="btn btn-success ms-2">Descargar Informe</button>
+            </div>
+        </main>
+      </section>
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          const mainContent = document.getElementById('mainContent');
+          const seccionInformes = document.getElementById('seguimiento-informes');
+          const sidebarLinks = document.querySelectorAll('.nav-link');
+          sidebarLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+              if (this.id === 'seguimiento-link') {
+                e.preventDefault();
+                mainContent.style.display = 'none';
+                seccionInformes.style.display = 'block';
+              } else {
+                seccionInformes.style.display = 'none';
+                mainContent.style.display = 'block';
+              }
+            });
+          });
+          // Lógica para descargar el informe general
+          const btn = document.getElementById('btnDescargarInforme');
+          if (btn) {
+            btn.addEventListener('click', function() {
+              const mes = document.getElementById('mesSeleccionado').value;
+              fetch(`/descargar_informe?mes=${mes}&global=1`, {
+                method: 'GET',
+                credentials: 'include'
+              })
+              .then(response => {
+                if (!response.ok) throw new Error('No se pudo generar el informe');
+                return response.blob();
+              })
+              .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'informe_general.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+              })
+              .catch(err => {
+                alert('Error al descargar el informe: ' + err.message);
+              });
+            });
+          }
+        });
+      </script>
     </div>
  
   <!--Ruta para configuar el chatbox-->
- <!-- Botón flotante para abrir la lista de chats -->
-<button id="chat-fab" class="chat-fab shadow-lg">
+<!-- BLOQUE ÚNICO DE CHAT PARA TODOS LOS ROLES -->
+<!-- FAB Chat mejorado -->
+<button id="chat-fab" class="chat-fab shadow-lg animate__animated animate__fadeInUp" title="Abrir chat">
   <i class="bi bi-chat-dots-fill"></i>
 </button>
-
-<!-- Lista de chats tipo Messenger -->
-<div id="chat-messenger" class="chat-messenger shadow-lg" style="display: none; max-height: 80vh;">
-  <div class="chat-messenger-header bg-success text-white p-2 d-flex justify-content-between align-items-center">
-    <span class="fw-bold">Chats con Líderes</span>
-    <button class="btn-close text-white" id="close-chat-messenger"></button>
+<!-- Messenger lateral -->
+<div id="chat-messenger" class="chat-messenger shadow-lg animate__animated animate__fadeInRight" style="display: none;">
+  <div class="chat-messenger-header d-flex align-items-center p-2">
+    <span class="fw-bold flex-grow-1"><i class="bi bi-chat-left-text me-2"></i>Chats</span>
+    <button class="btn-close btn-close-white ms-2" id="close-chat-messenger"></button>
   </div>
-  <div id="chat-list" class="chat-messenger-body p-2 overflow-auto" style="max-height: 70vh;">
-    <!-- Aquí se insertan dinámicamente los chats -->
-  </div>
+  <div id="chat-list" class="chat-list p-2" style="max-height: 320px; overflow-y: auto;"></div>
 </div>
-
-<!-- Chat flotante con el líder -->
-<div id="chat-popup" class="chat-popup shadow-lg" style="display: none; max-height: 80vh; flex-direction: column;">
-  <div class="chat-popup-header bg-success text-white d-flex align-items-center p-2">
-    <img id="chat-avatar" src="/static/avatars/default.png" class="chat-avatar me-2 rounded-circle" width="32" height="32" />
+<!-- Popup de chat -->
+<div id="chat-popup" class="chat-popup shadow-lg animate__animated animate__fadeInUp" style="display: none; max-height: 80vh; flex-direction: column;">
+  <div class="chat-popup-header d-flex align-items-center p-2">
+    <img id="chat-avatar" src="/static/avatars/default.png" class="chat-avatar me-2 rounded-circle border border-2 border-success" width="36" height="36" />
     <span id="chat-nombre" class="fw-bold flex-grow-1"></span>
-    <button class="btn btn-sm text-white me-1" id="minimizar-chat-popup">−</button>
-    <button class="btn-close text-white" onclick="cerrarChatPopup()"></button>
+    <button class="btn btn-sm text-success me-1" id="minimizar-chat-popup" title="Minimizar"><i class="bi bi-dash"></i></button>
+    <button class="btn-close text-success" onclick="cerrarChatPopup()"></button>
   </div>
-
-  <div id="chat-popup-mensajes" class="chat-popup-body p-2" style="flex-grow: 1; overflow-y: auto;">
-    <!-- Aquí van los mensajes -->
-  </div>
-
-  <form id="chat-popup-form" class="chat-popup-form d-flex p-2 border-top">
-    <input type="text" class="form-control me-2" id="chat-popup-input" placeholder="Aa" autocomplete="off" />
-    
-    <!-- Botón para imagen -->
+  <div id="chat-popup-mensajes" class="chat-popup-body p-2" style="flex-grow: 1; overflow-y: auto; background: #f8fff8;"></div>
+  <form id="chat-popup-form" class="chat-popup-form d-flex p-2 border-top bg-white gap-2">
+    <input type="text" class="form-control me-2" id="chat-popup-input" placeholder="Aa" autocomplete="off" style="border-radius: 1.2rem;" />
     <input type="file" id="chat-popup-img" accept="image/*" style="display: none;" />
-    <label for="chat-popup-img" class="btn btn-light btn-sm mb-0 me-1" title="Enviar imagen">
+    <label for="chat-popup-img" class="btn btn-light btn-sm mb-0 me-1 px-2 py-1 rounded-circle border" title="Enviar imagen">
       <i class="bi bi-image"></i>
     </label>
-
-    <button type="submit" class="btn btn-success btn-sm">Enviar</button>
+    <button type="submit" class="btn btn-success btn-sm px-3 rounded-pill">Enviar</button>
   </form>
 </div>
-
-
-
+<!-- FIN BLOQUE ÚNICO DE CHAT -->
+<style>
+  /* Chatbox visual mejorado y consistente */
+  .chat-fab {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    z-index: 1051;
+    background: linear-gradient(135deg, #198754 0%, #43c59e 100%);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 64px;
+    height: 64px;
+    font-size: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 6px 32px 0 rgba(80,255,169,.15);
+    cursor: pointer;
+    transition: background .2s, transform .2s;
+  }
+  .chat-fab:hover {
+    background: #157347;
+    transform: scale(1.08);
+  }
+  .chat-messenger {
+    position: fixed;
+    bottom: 100px;
+    right: 36px;
+    width: 340px;
+    max-width: 95vw;
+    background: #fff;
+    border-radius: 1.2rem;
+    box-shadow: 0 8px 40px 0 rgba(25,135,84,0.18);
+    z-index: 2001;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1.5px solid #19875422;
+    animation: chatbox-fade-in 0.25s cubic-bezier(.4,1.6,.4,1);
+  }
+  .chat-messenger-header {
+    background: linear-gradient(90deg, #198754 60%, #43c59e 100%);
+    color: #fff;
+    font-weight: 600;
+    font-size: 1.1rem;
+    padding: 0.7rem 1.1rem;
+    display: flex;
+    align-items: center;
+    border-bottom: 1.5px solid #19875422;
+  }
+  .chat-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    background: #f8fff8;
+  }
+  .chat-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e9f9ee;
+    cursor: pointer;
+    border-radius: 0.7rem;
+    transition: background 0.18s;
+  }
+  .chat-list-item:hover, .chat-list-item.active {
+    background: #e9f9ee;
+  }
+  .chat-avatar-mini {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #43c59e44;
+    object-fit: cover;
+  }
+  .chat-popup {
+    position: fixed;
+    bottom: 100px;
+    right: 390px;
+    width: 340px;
+    max-width: 95vw;
+    background: #fff;
+    border-radius: 1.2rem;
+    box-shadow: 0 8px 40px 0 rgba(25,135,84,0.18);
+    z-index: 2002;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1.5px solid #19875422;
+    animation: chatbox-fade-in 0.25s cubic-bezier(.4,1.6,.4,1);
+  }
+  .chat-popup-header {
+    background: linear-gradient(90deg, #198754 60%, #43c59e 100%);
+    color: #fff;
+    font-weight: 600;
+    font-size: 1.1rem;
+    padding: 0.7rem 1.1rem;
+    display: flex;
+    align-items: center;
+    border-bottom: 1.5px solid #19875422;
+  }
+  .chat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #43c59e44;
+  }
+  .chat-popup-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    background: #f8fff8;
+    padding: 1rem 1rem 0.5rem 1rem;
+  }
+  .chat-popup-form {
+    background: #fff;
+    border-top: 1.5px solid #19875422;
+    padding: 0.7rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .chat-popup-form input[type="text"] {
+    border-radius: 1.2rem;
+    border: 1.5px solid #19875433;
+    background: #f8fff8;
+    color: #222;
+    font-size: 1rem;
+  }
+  .chat-popup-form button[type="submit"] {
+    border-radius: 1.2rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, #198754 60%, #43c59e 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 2px 8px rgba(25,135,84,0.08);
+    padding: 0.5rem 1.2rem;
+    transition: background 0.2s, color 0.2s;
+  }
+  .chat-popup-form button[type="submit"]:hover {
+    background: linear-gradient(90deg, #157347 60%, #198754 100%);
+    color: #fff;
+  }
+  @keyframes chatbox-fade-in {
+    from { opacity: 0; transform: translateY(40px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+</style>
     <div class="modal fade" id="modalProfesorTareas" tabindex="-1" aria-labelledby="modalProfesorTareasLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -238,11 +446,39 @@
   </div>
 </div>
 
-
+<!-- Socket.IO para chat en tiempo real -->
+    <script src="/static/js/socket.io.min.js"></script>
+    <script src="/static/js/chatbox.js?v=20250708"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
     <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
     <script src="{{ url_for('static', filename='js/session-security.js') }}"></script>
+    <script>
+      // Lógica para descargar el informe de tareas/proyectos
+      document.getElementById('descargar-informe-btn').addEventListener('click', function() {
+        fetch('/descargar_informe', {
+          method: 'GET',
+          credentials: 'include'
+        })
+        .then(response => {
+          if (!response.ok) throw new Error('No se pudo generar el informe');
+          return response.blob();
+        })
+        .then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'informe_proyecto.pdf';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+        })
+        .catch(err => {
+          alert('Error al descargar el informe: ' + err.message);
+        });
+      });
+    </script>
 
   </body>
 </html>

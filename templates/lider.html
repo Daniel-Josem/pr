@@ -87,7 +87,7 @@
                                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                                     <li><a class="dropdown-item" href="#" id="btnEditarPerfil">Perfil</a></li>
                                     <li><hr class="dropdown-divider" />
-                                    <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">Cerrar sesión</a></li>
+                                    <li><a class="dropdown-item text-danger" href="{{ url_for('login.login') }}">Cerrar sesión</a></li>
                                 </ul>
 
                             </div>
@@ -484,43 +484,187 @@
             </div>
             </div>
 
-            <!--Chat box para comunicarse con el admin y usuario-->
-    <!-- Botón flotante para abrir la lista de chats -->
-            <button id="chat-fab" class="chat-fab shadow-lg">
-            <i class="bi bi-chat-dots-fill"></i>
+            <!-- BLOQUE ÚNICO DE CHAT PARA TODOS LOS ROLES -->
+            <!-- FAB Chat mejorado -->
+            <button id="chat-fab" class="chat-fab shadow-lg animate__animated animate__fadeInUp" title="Abrir chat">
+              <i class="bi bi-chat-dots-fill"></i>
             </button>
-
-            <!-- Lista de chats tipo Messenger -->
-            <div id="chat-messenger" class="chat-messenger shadow-lg" style="display: none; max-height: 80vh;">
-            <div class="chat-messenger-header bg-success text-white p-2 d-flex justify-content-between align-items-center">
-                <span class="fw-bold">Chats con Administrador</span>
-                <button class="btn-close text-white" id="close-chat-messenger"></button>
+            <!-- Messenger lateral -->
+            <div id="chat-messenger" class="chat-messenger shadow-lg animate__animated animate__fadeInRight" style="display: none;">
+              <div class="chat-messenger-header d-flex align-items-center p-2">
+                <span class="fw-bold flex-grow-1"><i class="bi bi-chat-left-text me-2"></i>Chats</span>
+                <button class="btn-close btn-close-white ms-2" id="close-chat-messenger"></button>
+              </div>
+              <div id="chat-list" class="chat-list p-2" style="max-height: 320px; overflow-y: auto;"></div>
             </div>
-            <div id="chat-list" class="chat-messenger-body p-2 overflow-auto" style="max-height: 70vh;">
-                <!-- Aquí se insertan dinámicamente los chats -->
-            </div>
-            </div>
-
-            <!-- Chat flotante -->
-            <div id="chat-popup" class="chat-popup shadow-lg" style="display: none; max-height: 80vh; flex-direction: column;">
-            <div class="chat-popup-header bg-success text-white d-flex align-items-center p-2">
-                <img id="chat-avatar" src="/static/avatars/default.png" class="chat-avatar me-2 rounded-circle" width="32" height="32" />
+            <!-- Popup de chat -->
+            <div id="chat-popup" class="chat-popup shadow-lg animate__animated animate__fadeInUp" style="display: none; max-height: 80vh; flex-direction: column;">
+              <div class="chat-popup-header d-flex align-items-center p-2">
+                <img id="chat-avatar" src="/static/avatars/default.png" class="chat-avatar me-2 rounded-circle border border-2 border-success" width="36" height="36" />
                 <span id="chat-nombre" class="fw-bold flex-grow-1"></span>
-                <button class="btn btn-sm text-white me-1" id="minimizar-chat-popup">−</button>
-                <button class="btn-close text-white" onclick="cerrarChatPopup()"></button>
-            </div>
-
-            <div id="chat-popup-mensajes" class="chat-popup-body p-2" style="flex-grow: 1; overflow-y: auto;"></div>
-
-            <form id="chat-popup-form" class="chat-popup-form d-flex p-2 border-top">
-                <input type="text" class="form-control me-2" id="chat-popup-input" placeholder="Aa" autocomplete="off" />
+                <button class="btn btn-sm text-success me-1" id="minimizar-chat-popup" title="Minimizar"><i class="bi bi-dash"></i></button>
+                <button class="btn-close text-success" onclick="cerrarChatPopup()"></button>
+              </div>
+              <div id="chat-popup-mensajes" class="chat-popup-body p-2" style="flex-grow: 1; overflow-y: auto; background: #f8fff8;"></div>
+              <form id="chat-popup-form" class="chat-popup-form d-flex p-2 border-top bg-white gap-2">
+                <input type="text" class="form-control me-2" id="chat-popup-input" placeholder="Aa" autocomplete="off" style="border-radius: 1.2rem;" />
                 <input type="file" id="chat-popup-img" accept="image/*" style="display: none;" />
-                <label for="chat-popup-img" class="btn btn-light btn-sm mb-0 me-1" title="Enviar imagen">
-                <i class="bi bi-image"></i>
+                <label for="chat-popup-img" class="btn btn-light btn-sm mb-0 me-1 px-2 py-1 rounded-circle border" title="Enviar imagen">
+                  <i class="bi bi-image"></i>
                 </label>
-                <button type="submit" class="btn btn-success btn-sm">Enviar</button>
-            </form>
+                <button type="submit" class="btn btn-success btn-sm px-3 rounded-pill">Enviar</button>
+              </form>
             </div>
+            <!-- FIN BLOQUE ÚNICO DE CHAT -->
+            <style>
+              /* Chatbox visual mejorado y consistente */
+              .chat-fab {
+                position: fixed;
+                bottom: 32px;
+                right: 32px;
+                z-index: 1051;
+                background: linear-gradient(135deg, #198754 0%, #43c59e 100%);
+                color: #fff;
+                border: none;
+                border-radius: 50%;
+                width: 64px;
+                height: 64px;
+                font-size: 2rem;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                box-shadow: 0 6px 32px 0 rgba(80,255,169,.15);
+                cursor: pointer;
+                transition: background .2s, transform .2s;
+              }
+              .chat-fab:hover {
+                background: #157347;
+                transform: scale(1.08);
+              }
+              .chat-messenger {
+                position: fixed;
+                bottom: 100px;
+                right: 36px;
+                width: 340px;
+                max-width: 95vw;
+                background: #fff;
+                border-radius: 1.2rem;
+                box-shadow: 0 8px 40px 0 rgba(25,135,84,0.18);
+                z-index: 2001;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                border: 1.5px solid #19875422;
+                animation: chatbox-fade-in 0.25s cubic-bezier(.4,1.6,.4,1);
+              }
+              .chat-messenger-header {
+                background: linear-gradient(90deg, #198754 60%, #43c59e 100%);
+                color: #fff;
+                font-weight: 600;
+                font-size: 1.1rem;
+                padding: 0.7rem 1.1rem;
+                display: flex;
+                align-items: center;
+                border-bottom: 1.5px solid #19875422;
+              }
+              .chat-list {
+                flex: 1 1 auto;
+                overflow-y: auto;
+                background: #f8fff8;
+              }
+              .chat-list-item {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 12px;
+                border-bottom: 1px solid #e9f9ee;
+                cursor: pointer;
+                border-radius: 0.7rem;
+                transition: background 0.18s;
+              }
+              .chat-list-item:hover, .chat-list-item.active {
+                background: #e9f9ee;
+              }
+              .chat-avatar-mini {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                border: 2px solid #43c59e44;
+                object-fit: cover;
+              }
+              .chat-popup {
+                position: fixed;
+                bottom: 100px;
+                right: 390px;
+                width: 340px;
+                max-width: 95vw;
+                background: #fff;
+                border-radius: 1.2rem;
+                box-shadow: 0 8px 40px 0 rgba(25,135,84,0.18);
+                z-index: 2002;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                border: 1.5px solid #19875422;
+                animation: chatbox-fade-in 0.25s cubic-bezier(.4,1.6,.4,1);
+              }
+              .chat-popup-header {
+                background: linear-gradient(90deg, #198754 60%, #43c59e 100%);
+                color: #fff;
+                font-weight: 600;
+                font-size: 1.1rem;
+                padding: 0.7rem 1.1rem;
+                display: flex;
+                align-items: center;
+                border-bottom: 1.5px solid #19875422;
+              }
+              .chat-avatar {
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 2px solid #43c59e44;
+              }
+              .chat-popup-body {
+                flex: 1 1 auto;
+                overflow-y: auto;
+                background: #f8fff8;
+                padding: 1rem 1rem 0.5rem 1rem;
+              }
+              .chat-popup-form {
+                background: #fff;
+                border-top: 1.5px solid #19875422;
+                padding: 0.7rem 1.1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+              }
+              .chat-popup-form input[type="text"] {
+                border-radius: 1.2rem;
+                border: 1.5px solid #19875433;
+                background: #f8fff8;
+                color: #222;
+                font-size: 1rem;
+              }
+              .chat-popup-form button[type="submit"] {
+                border-radius: 1.2rem;
+                font-weight: 600;
+                background: linear-gradient(90deg, #198754 60%, #43c59e 100%);
+                color: #fff;
+                border: none;
+                box-shadow: 0 2px 8px rgba(25,135,84,0.08);
+                padding: 0.5rem 1.2rem;
+                transition: background 0.2s, color 0.2s;
+              }
+              .chat-popup-form button[type="submit"]:hover {
+                background: linear-gradient(90deg, #157347 60%, #198754 100%);
+                color: #fff;
+              }
+              @keyframes chatbox-fade-in {
+                from { opacity: 0; transform: translateY(40px) scale(0.95); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+              }
+            </style>
            <!-- Calendario -->
 <main class="p-4 seccion" id="contenido-calendario" style="display: none;">
     <section class="calendar d-flex flex-column flex-grow-1" style="min-height:0;">
@@ -605,7 +749,7 @@
 
 </style>
 
-<!-- Scripts: el orden es correcto -->
+    <!-- Scripts: el orden es correcto -->
 <!-- Scripts: el orden es correcto -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/@fullcalendar/core@6.1.8/main.min.js"></script>
@@ -622,8 +766,9 @@
 <script src="/static/js/session-security.js"></script>
 <script src="{{ url_for('static', filename='js/informes.js') }}"></script>
 
-
-
+<!-- Socket.IO para chat en tiempo real -->
+<script src="/static/js/socket.io.min.js"></script>
+<script src="/static/js/chatbox.js?v=20250708"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -656,42 +801,39 @@
     </script>
 
     <!--Chat box para comunicarse con el admin y usuario-->
+
     <!-- Botón flotante para abrir la lista de chats -->
-<button id="chat-fab" class="chat-fab shadow-lg">
-  <i class="bi bi-chat-dots-fill"></i>
-</button>
-
-<!-- Lista de chats tipo Messenger -->
-<div id="chat-messenger" class="chat-messenger shadow-lg" style="display: none; max-height: 80vh;">
-  <div class="chat-messenger-header bg-success text-white p-2 d-flex justify-content-between align-items-center">
-    <span class="fw-bold">Chats con Administrador</span>
-    <button class="btn-close text-white" id="close-chat-messenger"></button>
-  </div>
-  <div id="chat-list" class="chat-messenger-body p-2 overflow-auto" style="max-height: 70vh;">
-    <!-- Aquí se insertan dinámicamente los chats -->
-  </div>
-</div>
-
-<!-- Chat flotante -->
-<div id="chat-popup" class="chat-popup shadow-lg" style="display: none; max-height: 80vh; flex-direction: column;">
-  <div class="chat-popup-header bg-success text-white d-flex align-items-center p-2">
-    <img id="chat-avatar" src="/static/avatars/default.png" class="chat-avatar me-2 rounded-circle" width="32" height="32" />
-    <span id="chat-nombre" class="fw-bold flex-grow-1"></span>
-    <button class="btn btn-sm text-white me-1" id="minimizar-chat-popup">−</button>
-    <button class="btn-close text-white" onclick="cerrarChatPopup()"></button>
-  </div>
-
-  <div id="chat-popup-mensajes" class="chat-popup-body p-2" style="flex-grow: 1; overflow-y: auto;"></div>
-
-  <form id="chat-popup-form" class="chat-popup-form d-flex p-2 border-top">
-    <input type="text" class="form-control me-2" id="chat-popup-input" placeholder="Aa" autocomplete="off" />
-    <input type="file" id="chat-popup-img" accept="image/*" style="display: none;" />
-    <label for="chat-popup-img" class="btn btn-light btn-sm mb-0 me-1" title="Enviar imagen">
-      <i class="bi bi-image"></i>
-    </label>
-    <button type="submit" class="btn btn-success btn-sm">Enviar</button>
-  </form>
-</div>
+    <!-- Chatbox centralizado para todos los roles -->
+    <!-- Botón flotante para abrir el chatbox -->
+    <button id="chatbox-toggle-btn" class="chatbox-float shadow-lg">
+      <i class="bi bi-chat-dots-fill"></i>
+    </button>
+    <!-- Lista de chats tipo Messenger -->
+    <div id="chat-messenger" class="chat-messenger shadow-lg" style="display: none; max-height: 80vh;">
+        <div class="chat-messenger-header bg-success text-white p-2 d-flex justify-content-between align-items-center">
+            <span class="fw-bold">Chats con Administrador</span>
+            <button class="btn-close text-white" id="close-chat-messenger"></button>
+        </div>
+        <div id="chat-list" class="chat-messenger-body p-2 overflow-auto" style="max-height: 70vh;"></div>
+    </div>
+    <!-- Chat flotante -->
+    <div id="chat-popup" class="chat-popup shadow-lg" style="display: none; max-height: 80vh; flex-direction: column;">
+        <div class="chat-popup-header bg-success text-white d-flex align-items-center p-2">
+            <img id="chat-avatar" src="/static/avatars/default.png" class="chat-avatar me-2 rounded-circle" width="32" height="32" />
+            <span id="chat-nombre" class="fw-bold flex-grow-1"></span>
+            <button class="btn btn-sm text-white me-1" id="minimizar-chat-popup">−</button>
+            <button class="btn-close text-white" onclick="cerrarChatPopup()"></button>
+        </div>
+        <div id="chat-popup-mensajes" class="chat-popup-body p-2" style="flex-grow: 1; overflow-y: auto;"></div>
+        <form id="chat-popup-form" class="chat-popup-form d-flex p-2 border-top">
+            <input type="text" class="form-control me-2" id="chat-popup-input" placeholder="Aa" autocomplete="off" />
+            <input type="file" id="chat-popup-img" accept="image/*" style="display: none;" />
+            <label for="chat-popup-img" class="btn btn-light btn-sm mb-0 me-1" title="Enviar imagen">
+                <i class="bi bi-image"></i>
+            </label>
+            <button type="submit" class="btn btn-success btn-sm">Enviar</button>
+        </form>
+    </div>
 
 </body>
 

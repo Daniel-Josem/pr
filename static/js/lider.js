@@ -1,3 +1,38 @@
+// --- SOCKET.IO para mensajes en tiempo real ---
+if (typeof io !== 'undefined') {
+  const socket = io();
+  
+  // Escuchar nuevos mensajes
+  socket.on('nuevo_mensaje', function(msg) {
+    // Si el chat popup está abierto y es el chat correcto, mostrar el mensaje
+    if (usuarioChatActual && msg.emisor_id == usuarioChatActual) {
+      agregarMensajeAlPopup(msg);
+    }
+    // También actualizar la lista de chats para mostrar badge/notificación
+    cargarListaChats();
+  });
+  
+  // Hacer el socket disponible globalmente
+  window.socket = socket;
+}
+
+function agregarMensajeAlPopup(m) {
+  const contenedor = document.getElementById('chat-popup-mensajes');
+  const div = document.createElement('div');
+  div.classList.add('chat-bubble');
+  if (m.tipo === 'imagen') {
+    const img = document.createElement('img');
+    img.src = m.imagen_url;
+    img.classList.add('chat-img-click');
+    img.onclick = () => mostrarImagenGrande(img.src);
+    div.innerHTML = '';
+    div.appendChild(img);
+  } else {
+    div.textContent = `${m.emisor_nombre || m.emisor} (${m.emisor_rol || ''}): ${m.mensaje}`;
+  }
+  contenedor.appendChild(div);
+  contenedor.scrollTop = contenedor.scrollHeight;
+}
 document.addEventListener('DOMContentLoaded', function () {
     // Event listeners para formularios de tareas
     document.getElementById('btnCrearTarea').addEventListener('click', () => {
@@ -581,26 +616,51 @@ document.getElementById('formPerfilLider').addEventListener('submit', function (
         alert('Error al actualizar perfil');
     });
 });
+
 let usuarioChatActual = null;
 
+// Cargar lista de chats: mostrar admin + trabajadores del mismo grupo
 function cargarListaChats() {
-  fetch('/api/administrador/chat')  // Esta ruta debe devolver info del admin
-    .then(res => res.json())
-    .then(admin => {
+  Promise.all([
+    fetch('/api/chat/trabajadores'),  // Trabajadores del mismo grupo
+    fetch('/api/administrador/chat')  // Admin
+  ])
+    .then(([resTrabajadores, resAdmin]) => 
+      Promise.all([resTrabajadores.json(), resAdmin.json()])
+    )
+    .then(([trabajadores, admin]) => {
       const lista = document.getElementById('chat-list');
       lista.innerHTML = '';
-
-      const div = document.createElement('div');
-      div.classList.add('chat-list-item');
-      div.innerHTML = `
-        <img src="${admin.foto || '/static/avatars/default.png'}" class="chat-avatar-mini">
-        <div>
-          <div><strong>${admin.nombre_completo}</strong></div>
-          <small>Haz clic para abrir el chat</small>
-        </div>`;
-      div.onclick = () => abrirChatPopup(admin.id, admin.nombre_completo, admin.foto);
-      lista.appendChild(div);
-    });
+      
+      // Agregar admin primero si existe
+      if (admin && admin.id) {
+        const div = document.createElement('div');
+        div.classList.add('chat-list-item');
+        div.innerHTML = `
+          <img src="${admin.foto || '/static/avatars/default.png'}" class="chat-avatar-mini">
+          <div>
+            <div><strong>${admin.nombre_completo}</strong> <span class="badge bg-danger ms-1">Admin</span></div>
+            <small>Haz clic para abrir el chat</small>
+          </div>`;
+        div.onclick = () => abrirChatPopup(admin.id, admin.nombre_completo, admin.foto);
+        lista.appendChild(div);
+      }
+      
+      // Agregar trabajadores del mismo grupo
+      trabajadores.forEach(trab => {
+        const div = document.createElement('div');
+        div.classList.add('chat-list-item');
+        div.innerHTML = `
+          <img src="${trab.foto || '/static/avatars/default.png'}" class="chat-avatar-mini">
+          <div>
+            <div><strong>${trab.nombre_completo}</strong> <span class="badge bg-success ms-1">Trabajador</span></div>
+            <small>Haz clic para abrir el chat</small>
+          </div>`;
+        div.onclick = () => abrirChatPopup(trab.id, trab.nombre_completo, trab.foto);
+        lista.appendChild(div);
+      });
+    })
+    .catch(err => console.error('Error cargando lista de chats:', err));
 }
 
 function abrirChatPopup(id, nombre, foto) {
@@ -624,23 +684,7 @@ function cargarMensajesPopup(receptorId) {
     .then(mensajes => {
       const contenedor = document.getElementById('chat-popup-mensajes');
       contenedor.innerHTML = '';
-      mensajes.forEach(m => {
-        const div = document.createElement('div');
-        div.classList.add('chat-bubble');
-
-        if (m.tipo === 'imagen') {
-          const img = document.createElement('img');
-          img.src = m.imagen_url;
-          img.classList.add('chat-img-click');
-          img.onclick = () => mostrarImagenGrande(img.src);
-          div.innerHTML = '';
-          div.appendChild(img);
-        } else {
-          div.textContent = `${m.emisor === 'lider' ? 'Tú' : m.emisor}: ${m.mensaje}`;
-        }
-
-        contenedor.appendChild(div);
-      });
+      mensajes.forEach(m => agregarMensajeAlPopup(m));
       contenedor.scrollTop = contenedor.scrollHeight;
     });
 }
@@ -651,19 +695,32 @@ document.getElementById('chat-popup-form').addEventListener('submit', e => {
   const mensaje = input.value.trim();
   if (!mensaje || !usuarioChatActual) return;
 
-  fetch('/api/chat/enviar', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ receptor_id: usuarioChatActual, mensaje })
-  }).then(() => {
-    input.value = '';
-    cargarMensajesPopup(usuarioChatActual);
-  });
+  // Usar Socket.IO para enviar mensaje en tiempo real
+  if (typeof socket !== 'undefined') {
+    socket.emit('enviar_mensaje', {
+      receptor_id: usuarioChatActual,
+      mensaje: mensaje,
+      tipo: 'texto'
+    });
+  } else {
+    // Fallback a HTTP si Socket.IO no está disponible
+    fetch('/api/chat/enviar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ receptor_id: usuarioChatActual, mensaje })
+    }).then(() => {
+      cargarMensajesPopup(usuarioChatActual);
+    });
+  }
+
+  input.value = '';
 });
 
 document.getElementById('chat-popup-img').addEventListener('change', function () {
   const file = this.files[0];
   if (!file || !usuarioChatActual) return;
+  
+  // Para imágenes, seguimos usando HTTP ya que Socket.IO no maneja archivos directamente
   const formData = new FormData();
   formData.append('imagen', file);
   formData.append('receptor_id', usuarioChatActual);
@@ -671,7 +728,9 @@ document.getElementById('chat-popup-img').addEventListener('change', function ()
   fetch('/api/chat/enviar-imagen', {
     method: 'POST',
     body: formData
-  }).then(() => cargarMensajesPopup(usuarioChatActual));
+  }).then(() => {
+    cargarMensajesPopup(usuarioChatActual);
+  });
 });
 
 function mostrarImagenGrande(src) {
@@ -704,3 +763,13 @@ document.getElementById('chat-fab').addEventListener('click', () => {
 document.getElementById('close-chat-messenger').addEventListener('click', () => {
   document.getElementById('chat-messenger').style.display = 'none';
 });
+
+// Función para sincronizar mensajes periódicamente (respaldo)
+function sincronizarMensajes() {
+  if (usuarioChatActual) {
+    cargarMensajesPopup(usuarioChatActual);
+  }
+}
+
+// Actualizar mensajes cada 5 segundos como respaldo
+setInterval(sincronizarMensajes, 5000);

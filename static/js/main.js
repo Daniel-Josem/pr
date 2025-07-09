@@ -21,15 +21,25 @@ function obtenerIdUsuario() {
 // Inicializa el chat una vez que tenemos el ID
 function inicializarChat() {
   const receptorSelect = document.getElementById("chat-receptor");
-  // Cargar historial automáticamente del primer receptor válido
-  for (let i = 0; i < receptorSelect.options.length; i++) {
-    const option = receptorSelect.options[i];
-    if (!option.disabled && option.value) {
-      receptorSelect.selectedIndex = i;
-      cargarMensajes(parseInt(option.value));
-      break;
-    }
-  }
+  // Poblar el selector de receptores con admin y líderes
+  fetch('/api/chat/lista')
+    .then(response => response.json())
+    .then(usuarios => {
+      receptorSelect.innerHTML = '<option disabled selected>Seleccionar receptor</option>';
+      usuarios.forEach(u => {
+        let label = u.nombre_completo + (u.rol ? ` (${u.rol})` : '');
+        receptorSelect.innerHTML += `<option value="${u.id}">${label}</option>`;
+      });
+      // Seleccionar el primero válido y cargar mensajes
+      for (let i = 0; i < receptorSelect.options.length; i++) {
+        const option = receptorSelect.options[i];
+        if (!option.disabled && option.value) {
+          receptorSelect.selectedIndex = i;
+          cargarMensajes(parseInt(option.value));
+          break;
+        }
+      }
+    });
 }
 
 function handleStart() {
@@ -53,7 +63,7 @@ function enviarMensaje() {
     return;
   }
 
-  fetch("/enviar_mensaje", {
+  fetch("/api/chat/enviar", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -76,11 +86,9 @@ function enviarMensaje() {
 
 // Función para cargar historial de mensajes
 function cargarMensajes(receptorId) {
-  fetch(`/mensajes_con/${receptorId}`)
+  fetch(`/api/chat/${receptorId}`)
     .then(response => response.json())
     .then(mensajes => {
-      console.log("Mensajes recibidos:", mensajes);  // 👈 DEBUG
-
       const contenedor = document.getElementById("chat-mensaje");
       contenedor.innerHTML = "";
 
@@ -90,11 +98,11 @@ function cargarMensajes(receptorId) {
       }
 
       mensajes.forEach(m => {
-        console.log("Mensaje:", m);  // 👈 DEBUG
         const div = document.createElement("div");
         const clase = m.emisor_id === userId ? "derecha" : "izquierda";
         div.className = "mensaje " + clase;
-        div.textContent = m.mensaje;
+        // Mostrar nombre y mensaje
+        div.innerHTML = `<span class='fw-bold small text-primary'>${m.emisor || ''}</span><br>${m.mensaje}`;
         contenedor.appendChild(div);
       });
 

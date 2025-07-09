@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request,render_template,send_file,session
+from flask import Blueprint, jsonify, request,render_template,send_file,session, current_app
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from fpdf import FPDF
@@ -211,7 +211,7 @@ def obtener_trabajadores():
     return jsonify([dict(t) for t in trabajadores])
 
 
-# 7. Ruta para inactivar trabahadores
+# 7. Ruta para inactivar trabahajadores
 @api_blueprint.route('/api/trabajador/inactivar/<int:id>', methods=['POST'])
 @api_admin_required
 def inactivar_trabajador(id):
@@ -550,8 +550,8 @@ def obtener_progreso_proyecto(nombre):
         "pendientes": tareas_pendientes
     })
 #Ruta de chatbox
-@api_blueprint.route('/api/chat/lista')
-def obtener_lista_chats():
+@api_blueprint.route('/api/usuarios/chat')
+def obtener_usuarios_para_chat():
     usuario_id = session.get('usuario_id')
     if not usuario_id:
         return jsonify([])
@@ -560,40 +560,78 @@ def obtener_lista_chats():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
+    # Mostrar solo líderes activos para el trabajador
     cursor.execute('''
-        SELECT DISTINCT u.id, u.nombre_completo
-        FROM mensajes m
-        JOIN Usuario u ON u.id = m.receptor_id OR u.id = m.emisor_id
-        WHERE (m.emisor_id = ? OR m.receptor_id = ?)
-        AND u.rol = 'lider' AND u.id != ?
-        ORDER BY u.nombre_completo
-    ''', (usuario_id, usuario_id, usuario_id))
+        SELECT id, nombre_completo, rol, foto
+        FROM Usuario
+        WHERE estado = 'activo' AND id != ? AND rol = 'lider'
+        ORDER BY nombre_completo
+    ''', (usuario_id,))
 
     usuarios = cursor.fetchall()
     conn.close()
     return jsonify([dict(u) for u in usuarios])
 
 
+
+# Ruta para que el líder vea mensajes con un trabajador específico
 @api_blueprint.route('/api/chat/<int:receptor_id>')
-def obtener_mensajes_chat(receptor_id):
+def obtener_mensajes_chat_lider(receptor_id):
     emisor_id = session.get('usuario_id')
     if not emisor_id:
         return jsonify([])
-
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-
     cursor.execute('''
-        SELECT * FROM mensajes
-        WHERE (emisor_id = ? AND receptor_id = ?)
-           OR (emisor_id = ? AND receptor_id = ?)
-        ORDER BY fecha ASC
+        SELECT m.*, u.nombre_completo as emisor_nombre, u.rol as emisor_rol
+        FROM mensajes m
+        JOIN Usuario u ON m.emisor_id = u.id
+        WHERE (m.emisor_id = ? AND m.receptor_id = ?)
+           OR (m.emisor_id = ? AND m.receptor_id = ?)
+        ORDER BY m.fecha ASC
     ''', (emisor_id, receptor_id, receptor_id, emisor_id))
-
     mensajes = cursor.fetchall()
     conn.close()
     return jsonify([dict(m) for m in mensajes])
+@api_blueprint.route('/api/chat/trabajadores')
+def obtener_trabajadores_con_chat():
+    """Devuelve la lista de trabajadores para líderes (solo del mismo grupo)"""
+    usuario_id = session.get('usuario_id')
+    if not usuario_id:
+        return jsonify([])
+    
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Obtener el rol y grupo del usuario actual
+    cursor.execute('SELECT rol, grupo FROM Usuario WHERE id = ?', (usuario_id,))
+    usuario_actual = cursor.fetchone()
+    
+    if not usuario_actual:
+        conn.close()
+        return jsonify([])
+    
+    if usuario_actual['rol'] == 'lider':
+        # Líderes solo ven trabajadores de su mismo grupo
+        cursor.execute('''
+            SELECT DISTINCT u.id, u.nombre_completo, u.foto
+            FROM Usuario u
+            WHERE u.rol = 'trabajador' 
+            AND u.estado = 'activo'
+            AND u.grupo = ?
+            ORDER BY u.nombre_completo
+        ''', (usuario_actual['grupo'],))
+    else:
+        # Por si acaso, devolver lista vacía para otros roles
+        conn.close()
+        return jsonify([])
+    
+    trabajadores = cursor.fetchall()
+    conn.close()
+    
+    return jsonify([dict(t) for t in trabajadores])
 
 
 @api_blueprint.route('/api/chat/enviar', methods=['POST'])
@@ -617,6 +655,7 @@ def enviar_mensaje_texto():
     ''', (emisor_id, emisor_nombre, receptor_id, mensaje))
     conn.commit()
     conn.close()
+    
     return jsonify({'success': True})
 
 
@@ -645,6 +684,7 @@ def enviar_imagen():
     ''', (emisor_id, emisor_nombre, receptor_id, url_imagen))
     conn.commit()
     conn.close()
+    
     return jsonify({'success': True})
 
 @api_blueprint.route('/api/lideres/chat', methods=['GET'])
@@ -676,3 +716,95 @@ def obtener_info_admin_para_lider():
     admin = cursor.fetchone()
     conn.close()
     return jsonify(dict(admin) if admin else {})
+
+#Ruta para descargar informe general de tareas
+@api_blueprint.route('/descargar_informe')
+@api_admin_required
+def descargar_informe_admin():
+    from fpdf import FPDF
+    from io import BytesIO
+    from datetime import datetime
+    import sqlite3
+
+    # Parámetros de mes y año
+    mes = request.args.get('mes')
+    hoy = datetime.now()
+    anio = hoy.year
+    if mes is None:
+        mes = f"{hoy.month:02}"
+    else:
+        mes = str(mes).zfill(2)
+    # Primer y último día del mes
+    primer_dia = f"{anio}-{mes}-01"
+    if mes == '12':
+        siguiente_mes = f"{anio + 1}-01-01"
+    else:
+        siguiente_mes = f"{anio}-{int(mes)+1:02}-01"
+
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT t.titulo, t.descripcion, t.fecha_registro, t.fecha_vencimiento, t.estado, \
+               COALESCE(p.nombre, 'Proyecto no especificado') AS proyecto, t.curso_destino
+        FROM tareas t
+        LEFT JOIN Proyecto p ON t.id_proyecto = p.id
+        WHERE t.fecha_vencimiento >= ? AND t.fecha_vencimiento < ?
+    """, (primer_dia, siguiente_mes))
+
+    tareas = cursor.fetchall()
+    conn.close()
+
+    pdf = FPDF()
+    pdf.add_page()
+
+    # 🎨 Fondo
+    pdf.set_fill_color(230, 240, 255)
+    pdf.rect(0, 0, 210, 297, 'F')
+
+    # 🖼️ Logo
+    try:
+        pdf.image('static/avatars/barra_lateral.png', x=10, y=8, w=30)
+    except:
+        pass
+
+    # 📄 Encabezado
+    pdf.set_font('Arial', 'B', 16)
+    pdf.ln(10)
+    pdf.cell(0, 10, 'Informe General de Tareas', ln=True, align='C')
+    pdf.ln(5)
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(0, 10, f'Mes: {datetime.strptime(mes, "%m").strftime("%B")} {anio}', ln=True, align='C')
+    pdf.ln(10)
+
+    if tareas:
+        ancho_total = 30 + 40 + 30 + 30 + 30 + 40  # Proyecto, Título, Fechas, Estado, Grupo
+        margen_izquierdo = (210 - ancho_total) / 2
+        pdf.set_x(margen_izquierdo)
+        pdf.set_fill_color(180, 210, 255)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(30, 10, 'Proyecto', 1, 0, 'C', 1)
+        pdf.cell(40, 10, 'Título', 1, 0, 'C', 1)
+        pdf.cell(30, 10, 'Fecha Reg.', 1, 0, 'C', 1)
+        pdf.cell(30, 10, 'Fecha Entrega', 1, 0, 'C', 1)
+        pdf.cell(30, 10, 'Estado', 1, 0, 'C', 1)
+        pdf.cell(40, 10, 'Grupo', 1, 1, 'C', 1)
+        pdf.set_font('Arial', '', 10)
+        line_height = 6
+        for tarea in tareas:
+            pdf.set_x(margen_izquierdo)
+            pdf.cell(30, line_height, tarea['proyecto'], border=1, align='C')
+            pdf.cell(40, line_height, tarea['titulo'], border=1, align='C')
+            pdf.cell(30, line_height, tarea['fecha_registro'] or 'N/A', border=1, align='C')
+            pdf.cell(30, line_height, tarea['fecha_vencimiento'], border=1, align='C')
+            pdf.cell(30, line_height, tarea['estado'], border=1, align='C')
+            pdf.cell(40, line_height, tarea['curso_destino'], border=1, align='C')
+            pdf.ln(line_height)
+    else:
+        pdf.cell(0, 10, 'No hay tareas registradas este mes.', ln=True, align='C')
+
+    pdf_bytes = pdf.output(dest='S').encode('latin-1')
+    pdf_output = BytesIO(pdf_bytes)
+
+    return send_file(pdf_output, as_attachment=True, download_name='informe_general.pdf', mimetype='application/pdf')

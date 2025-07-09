@@ -14,11 +14,10 @@ from error_handlers import register_error_handlers, register_monitoring_routes, 
 import re
 from urllib.parse import unquote
 from dotenv import load_dotenv
-
-
-
-# Cargar variables de entorno desde .env (soporta renombrar env → .env)
+from flask_socketio import SocketIO, join_room, leave_room, emit
 import pathlib
+
+
 dotenv_path = pathlib.Path('.env')
 if not dotenv_path.exists():
     alt_env = pathlib.Path('env')
@@ -27,9 +26,17 @@ if not dotenv_path.exists():
         print('Archivo env renombrado a .env')
 load_dotenv(dotenv_path='.env')
 
+
 app = Flask(__name__)
 # Usar una clave secreta desde variables de entorno o una por defecto
 app.secret_key = os.getenv('SECRET_KEY', 'clave_secreta_segura')
+
+
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+
+# Agregar socketio al contexto de la aplicación para que sea accesible desde blueprints
+app.socketio = socketio
+
 
 # Configurar Flask-Login
 login_manager = LoginManager()
@@ -336,7 +343,84 @@ def cleanup_session():
     session.clear()
     return '', 204
 
+
+# --- SOCKET.IO: Manejo de conexiones y mensajes ---
+@socketio.on('connect')
+def handle_connect():
+    if 'usuario_id' in session and 'rol' in session:
+        rol = session['rol']
+        if rol == 'trabajador':
+            join_room('trabajador')
+        elif rol == 'admin':
+            join_room('admin')
+        elif rol == 'lider':
+            join_room('lider')
+        # También puede unirse a una sala privada por su ID
+        join_room(f"user_{session['usuario_id']}")
+
+@socketio.on('enviar_mensaje')
+def handle_enviar_mensaje(data):
+    # data: {receptor_id, mensaje, tipo}
+    emisor_id = session.get('usuario_id')
+    emisor_nombre = session.get('usuario')
+    emisor_rol = session.get('rol')
+    receptor_id = data.get('receptor_id')
+    mensaje = data.get('mensaje')
+    tipo = data.get('tipo', 'texto')
+    imagen_url = data.get('imagen_url') if tipo == 'imagen' else None
+
+    # Guardar en la base de datos
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO mensajes (emisor_id, emisor, receptor_id, mensaje, tipo, imagen_url)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (emisor_id, emisor_nombre, receptor_id, mensaje, tipo, imagen_url))
+    conn.commit()
+    conn.close()
+
+    # Preparar datos para emitir
+    msg = {
+        'emisor_id': emisor_id,
+        'emisor_nombre': emisor_nombre,
+        'emisor_rol': emisor_rol,
+        'receptor_id': receptor_id,
+        'mensaje': mensaje,
+        'tipo': tipo,
+        'imagen_url': imagen_url
+    }
+
+    # Lógica de envío según roles
+    if emisor_rol == 'trabajador':
+        # Enviar a admin y lider
+        emit('nuevo_mensaje', msg, room='admin')
+        emit('nuevo_mensaje', msg, room='lider')
+        # También a la sala privada del receptor si aplica
+        if receptor_id:
+            emit('nuevo_mensaje', msg, room=f'user_{receptor_id}')
+    elif emisor_rol == 'admin':
+        # Enviar a la sala de trabajadores y líderes
+        emit('nuevo_mensaje', msg, room='trabajador')
+        emit('nuevo_mensaje', msg, room='lider')
+        # También a la sala privada del receptor si aplica
+        if receptor_id:
+            emit('nuevo_mensaje', msg, room=f'user_{receptor_id}')
+    elif emisor_rol == 'lider':
+        # Enviar a admin y trabajadores
+        emit('nuevo_mensaje', msg, room='admin')
+        emit('nuevo_mensaje', msg, room='trabajador')
+        # También a la sala privada del receptor si aplica
+        if receptor_id:
+            emit('nuevo_mensaje', msg, room=f'user_{receptor_id}')
+    else:
+        # Por defecto, solo al receptor
+        if receptor_id:
+            emit('nuevo_mensaje', msg, room=f'user_{receptor_id}')
+
+    # Opcional: también al propio emisor (eco)
+    emit('nuevo_mensaje', msg, room=f'user_{emisor_id}')
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)
 
 

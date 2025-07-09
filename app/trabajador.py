@@ -1,9 +1,11 @@
+# --- CHATBOX: Rutas para chat trabajador → líder ---
+from flask import current_app
+from flask import Blueprint, request, jsonify
+from app.session_decorators import api_trabajador_required
 from email.message import EmailMessage
 import smtplib
 from dotenv import load_dotenv
 import os
-# Endpoint para enviar reporte de soporte
-
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
 from flask_login import login_required, current_user
 import time
@@ -171,6 +173,77 @@ def completar_tarea(tarea_id):
 
 
 # --- API: Actualizar Perfil (nombre, acerca_de_mi, avatar) ---
+
+# --- CHATBOX: Rutas para chat trabajador → líder ---
+from flask import current_app
+
+
+# (Eliminada función duplicada de /api/usuarios/chat)
+
+# Obtener mensajes entre trabajador y líder
+
+# API: Mensajes entre trabajador y su líder
+@trabajador_blueprint.route('/api/chat/<int:receptor_id>', methods=['GET'])
+@api_trabajador_required
+def obtener_mensajes_chat_trabajador(receptor_id):
+    usuario = session.get('usuario')
+    if isinstance(usuario, dict):
+        usuario_id = usuario.get('id')
+    else:
+        usuario_id = usuario
+    if not usuario_id:
+        return jsonify([])
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    # Solo mensajes entre el trabajador logueado y el líder receptor
+    cursor.execute('''
+        SELECT m.*, u.nombre_completo as emisor_nombre, u.rol as emisor_rol
+        FROM mensajes m
+        JOIN Usuario u ON m.emisor_id = u.id
+        WHERE (m.emisor_id = ? AND m.receptor_id = ?)
+           OR (m.emisor_id = ? AND m.receptor_id = ?)
+        ORDER BY m.fecha ASC
+    ''', (usuario_id, receptor_id, receptor_id, usuario_id))
+    mensajes = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(m) for m in mensajes])
+
+# Enviar mensaje de trabajador a líder
+
+# API: Enviar mensaje de trabajador a líder
+@trabajador_blueprint.route('/api/chat/enviar', methods=['POST'])
+@api_trabajador_required
+def enviar_mensaje_trabajador():
+    data = request.get_json()
+    usuario = session.get('usuario')
+    if isinstance(usuario, dict):
+        emisor_id = usuario.get('id')
+    else:
+        emisor_id = usuario
+    receptor_id = data.get('receptor_id')
+    mensaje = data.get('mensaje')
+    if not emisor_id or not receptor_id or not mensaje:
+        return jsonify({'error': 'Datos incompletos'}), 400
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    cursor = conn.cursor()
+    # Validar roles
+    cursor.execute('SELECT rol FROM Usuario WHERE id = ?', (emisor_id,))
+    rol_emisor = cursor.fetchone()
+    cursor.execute('SELECT rol FROM Usuario WHERE id = ?', (receptor_id,))
+    rol_receptor = cursor.fetchone()
+    if not rol_emisor or not rol_receptor or rol_emisor[0] != 'trabajador' or rol_receptor[0] != 'lider':
+        conn.close()
+        return jsonify({'error': 'Solo se permite enviar mensajes de trabajador a líder'}), 403
+    cursor.execute('SELECT nombre_completo FROM Usuario WHERE id = ?', (emisor_id,))
+    emisor_nombre = cursor.fetchone()[0]
+    cursor.execute('''
+        INSERT INTO mensajes (emisor_id, emisor, receptor_id, mensaje, tipo)
+        VALUES (?, ?, ?, ?, 'texto')
+    ''', (emisor_id, emisor_nombre, receptor_id, mensaje))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
 
 @trabajador_blueprint.route('/api/actualizar_perfil', methods=['POST'])
 @api_trabajador_required
@@ -615,5 +688,32 @@ Descripción:
     except Exception as ex:
         return jsonify({'ok': False, 'error': str(ex)}), 500
 
-
+# --- API para obtener usuarios para chat ---
+@trabajador_blueprint.route('/api/usuarios/chat')
+@api_trabajador_required
+def api_usuarios_chat():
+    """Devuelve solo el líder del grupo del trabajador logueado"""
+    usuario = session.get('usuario')
+    grupo_usuario = session.get('grupo')
+    if isinstance(usuario, dict):
+        usuario_id = usuario.get('id')
+    else:
+        usuario_id = usuario
+    if not grupo_usuario:
+        return jsonify([])
+    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT id, nombre_completo, rol, foto
+        FROM Usuario
+        WHERE estado = 'activo' AND rol = 'lider' AND TRIM(LOWER(grupo)) = TRIM(LOWER(?))
+        LIMIT 1
+    ''', (grupo_usuario,))
+    lider = cursor.fetchone()
+    conn.close()
+    if lider:
+        return jsonify([dict(lider)])
+    else:
+        return jsonify([])
 

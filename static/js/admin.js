@@ -941,68 +941,117 @@ function generarPDF(nombreProyecto) {
   window.open(`/api/proyecto/${encodeURIComponent(nombreProyecto)}/pdf`, '_blank');
 }
 
-// --- BOTÓN DE CHAT PRINCIPAL ---
-document.getElementById('chat-fab').addEventListener('click', () => {
-  document.getElementById('chat-messenger').style.display = 'flex';
-  cargarListaChats();
-});
+// --- CHAT UNIFICADO PARA TODOS LOS ROLES ---
+document.addEventListener('DOMContentLoaded', function () {
+  // Botón abrir chat
+  const chatFab = document.getElementById('chat-fab');
+  if (chatFab) {
+    chatFab.addEventListener('click', () => {
+      document.getElementById('chat-messenger').style.display = 'flex';
+      cargarListaChats();
+    });
+  }
+  // Botón cerrar lista de chats
+  const closeChatMessenger = document.getElementById('close-chat-messenger');
+  if (closeChatMessenger) {
+    closeChatMessenger.addEventListener('click', () => {
+      document.getElementById('chat-messenger').style.display = 'none';
+      cerrarChatPopup();
+    });
+  }
+  // Botón minimizar chat
+  const minimizarBtn = document.getElementById('minimizar-chat-popup');
+  if (minimizarBtn) {
+    minimizarBtn.addEventListener('click', () => {
+      document.getElementById('chat-popup').style.display = 'none';
+      document.getElementById('chat-messenger').style.display = 'flex';
+    });
+  }
 
-document.getElementById('close-chat-messenger').addEventListener('click', () => {
-  document.getElementById('chat-messenger').style.display = 'none';
-  cerrarChatPopup();
+  // Enviar mensaje texto
+  const chatForm = document.getElementById('chat-popup-form');
+  if (chatForm) {
+    chatForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const input = document.getElementById('chat-popup-input');
+      const mensaje = input.value.trim();
+      if (!mensaje || !window.usuarioChatActual) return;
+      fetch('/api/chat/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receptor_id: window.usuarioChatActual, mensaje })
+      }).then(() => {
+        input.value = '';
+        cargarMensajesPopup(window.usuarioChatActual);
+      });
+    });
+  }
+
+  // Enviar imagen
+  const chatImg = document.getElementById('chat-popup-img');
+  if (chatImg) {
+    chatImg.addEventListener('change', function () {
+      const file = this.files[0];
+      if (!file || !window.usuarioChatActual) return;
+      const formData = new FormData();
+      formData.append('imagen', file);
+      formData.append('receptor_id', window.usuarioChatActual);
+      fetch('/api/chat/enviar-imagen', {
+        method: 'POST',
+        body: formData
+      }).then(() => cargarMensajesPopup(window.usuarioChatActual));
+    });
+  }
 });
 
 // --- FUNCIONES DE CHAT ---
-let usuarioChatActual = null;
+window.usuarioChatActual = null;
 
 function cargarListaChats() {
+  // Admin solo ve líderes
   fetch('/api/lideres/chat')
     .then(res => res.json())
     .then(lideres => {
       const lista = document.getElementById('chat-list');
+      if (!lista) return;
       lista.innerHTML = '';
+      
+      // Agregar solo líderes
       lideres.forEach(l => {
-        // Construir la ruta completa de la foto
         const rutaFoto = l.foto && l.foto.trim() !== ''
           ? `/static/avatars/${l.foto}`
           : '/static/avatars/default.png';
-
         const div = document.createElement('div');
         div.classList.add('chat-list-item');
         div.innerHTML = `
           <img src="${rutaFoto}" class="chat-avatar-mini">
           <div>
-            <div><strong>${l.nombre_completo}</strong></div>
+            <div><strong>${l.nombre_completo}</strong> <span class="badge bg-primary ms-1">Líder</span></div>
             <small>Haz clic para abrir el chat</small>
           </div>`;
-        div.onclick = () => abrirChatPopup(l.id, l.nombre_completo, l.foto);
+        div.onclick = () => abrirChatPopup(l.id, l.nombre_completo, l.foto, 'Líder');
         lista.appendChild(div);
       });
     })
     .catch(err => console.error('Error cargando lista de chats:', err));
 }
 
-
-function abrirChatPopup(id, nombre, foto) {
-  usuarioChatActual = id;
+function abrirChatPopup(id, nombre, foto, rol) {
+  window.usuarioChatActual = id;
   document.getElementById('chat-messenger').style.display = 'none';
   document.getElementById('chat-popup').style.display = 'flex';
-  document.getElementById('chat-nombre').textContent = nombre;
-
-  // Construir la ruta completa de la imagen de perfil
+  document.getElementById('chat-nombre').textContent = nombre + (rol ? ` (${rol})` : '');
   const rutaFoto = foto && foto.trim() !== ''
     ? `/static/avatars/${foto}`
     : '/static/avatars/default.png';
-
   document.getElementById('chat-avatar').src = rutaFoto;
   cargarMensajesPopup(id);
 }
 
-
 function cerrarChatPopup() {
   document.getElementById('chat-popup').style.display = 'none';
   document.getElementById('chat-popup-mensajes').innerHTML = '';
-  usuarioChatActual = null;
+  window.usuarioChatActual = null;
 }
 
 function cargarMensajesPopup(receptorId) {
@@ -1010,11 +1059,15 @@ function cargarMensajesPopup(receptorId) {
     .then(res => res.json())
     .then(mensajes => {
       const contenedor = document.getElementById('chat-popup-mensajes');
+      if (!contenedor) return;
       contenedor.innerHTML = '';
       mensajes.forEach(m => {
         const div = document.createElement('div');
         div.classList.add('chat-bubble');
-
+        // Diferenciar emisor y receptor visualmente
+        if (m.emisor_id === m.usuario_actual_id) {
+          div.classList.add('chat-bubble-own'); // Aplica un color diferente para el propio usuario
+        }
         if (m.tipo === 'imagen') {
           const img = document.createElement('img');
           img.src = m.imagen_url;
@@ -1023,43 +1076,13 @@ function cargarMensajesPopup(receptorId) {
           div.innerHTML = '';
           div.appendChild(img);
         } else {
-          div.textContent = `${m.emisor === 'admin' ? 'Tú' : m.emisor}: ${m.mensaje}`;
+          div.innerHTML = `<span class="fw-bold">${m.emisor_nombre || m.emisor}</span>: ${m.mensaje}`;
         }
-
         contenedor.appendChild(div);
       });
       contenedor.scrollTop = contenedor.scrollHeight;
     });
 }
-
-document.getElementById('chat-popup-form').addEventListener('submit', e => {
-  e.preventDefault();
-  const input = document.getElementById('chat-popup-input');
-  const mensaje = input.value.trim();
-  if (!mensaje || !usuarioChatActual) return;
-
-  fetch('/api/chat/enviar', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ receptor_id: usuarioChatActual, mensaje })
-  }).then(() => {
-    input.value = '';
-    cargarMensajesPopup(usuarioChatActual);
-  });
-});
-
-document.getElementById('chat-popup-img').addEventListener('change', function () {
-  const file = this.files[0];
-  if (!file || !usuarioChatActual) return;
-  const formData = new FormData();
-  formData.append('imagen', file);
-  formData.append('receptor_id', usuarioChatActual);
-
-  fetch('/api/chat/enviar-imagen', {
-    method: 'POST',
-    body: formData
-  }).then(() => cargarMensajesPopup(usuarioChatActual));
-});
 
 function mostrarImagenGrande(src) {
   const modal = document.createElement("div");
@@ -1078,7 +1101,4 @@ function mostrarImagenGrande(src) {
   document.body.appendChild(modal);
 }
 
-document.getElementById('minimizar-chat-popup').addEventListener('click', () => {
-  document.getElementById('chat-popup').style.display = 'none';
-  document.getElementById('chat-messenger').style.display = 'flex';
-});
+

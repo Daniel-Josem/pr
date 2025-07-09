@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 import uuid
 from werkzeug.utils import secure_filename
-from app.session_decorators import trabajador_required, api_trabajador_required, secure_route
+from app.session_decorators import trabajador_required, api_trabajador_required, secure_route, api_multi_role_required
 
 trabajador_blueprint = Blueprint('trabajador', __name__)
 
@@ -398,7 +398,7 @@ def subir_archivo_tarea(tarea_id):
 
 # --- API para obtener detalles de tarea ---
 @trabajador_blueprint.route('/api/tarea/<int:tarea_id>')
-@api_trabajador_required
+@api_multi_role_required(['admin', 'lider', 'trabajador'])
 def api_tarea_detalle(tarea_id):
     conn = sqlite3.connect('gestor_de_tareas.db')
     conn.row_factory = sqlite3.Row
@@ -423,7 +423,7 @@ def api_tarea_detalle(tarea_id):
 
 # --- API para obtener todas las tareas del usuario ---
 @trabajador_blueprint.route('/api/tareas')
-@api_trabajador_required
+@api_multi_role_required(['admin', 'lider', 'trabajador'])
 def api_tareas_usuario():
     usuario = session.get('usuario')
     grupo_usuario = session.get('grupo')
@@ -474,7 +474,7 @@ def api_tareas_usuario():
 
 # --- ENDPOINT DE DEPURACIÓN: Verificar archivos en base de datos ---
 @trabajador_blueprint.route('/api/debug/archivos')
-@api_trabajador_required
+@api_multi_role_required(['admin', 'lider', 'trabajador'])
 def debug_archivos():
     
     conn = sqlite3.connect('gestor_de_tareas.db')
@@ -526,7 +526,7 @@ def debug_archivos():
 
 # --- ENDPOINT DE DEPURACIÓN: Listar archivos físicos ---
 @trabajador_blueprint.route('/api/debug/archivos-fisicos')
-@api_trabajador_required
+@api_multi_role_required(['admin', 'lider', 'trabajador'])
 def debug_archivos_fisicos():
     
     carpeta = os.path.join('static', 'archivos_tareas')
@@ -552,7 +552,7 @@ def debug_archivos_fisicos():
 
 # --- API para obtener notificaciones del trabajador ---
 @trabajador_blueprint.route('/api/notificaciones')
-@api_trabajador_required
+@api_multi_role_required(['admin', 'lider', 'trabajador'])
 def api_notificaciones_trabajador():
     usuario = session.get('usuario')
     if isinstance(usuario, dict):

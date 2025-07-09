@@ -121,8 +121,6 @@ def api_lider_required(f):
 
 def api_trabajador_required(f):
     """Decorador específico para APIs de trabajadores"""
-
-# Versión única: Decorador para APIs de trabajador que siempre responde JSON en caso de error
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'usuario' not in session or session.get('rol') != 'trabajador':
@@ -179,11 +177,39 @@ def secure_route(allowed_roles=None):
         return decorated_function
     return decorator
 
-def api_trabajador_required(f):
-    """Decorador específico para APIs de trabajadores"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'usuario' not in session or session.get('rol') != 'trabajador':
-            return jsonify({'error': 'Acceso no autorizado'}), 401
-        return f(*args, **kwargs)
-    return decorated_function
+def api_multi_role_required(allowed_roles=['admin', 'lider', 'trabajador']):
+    """
+    Decorador para APIs que permite múltiples roles
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Verificar si hay sesión activa
+            if 'usuario' not in session or 'usuario_id' not in session:
+                return jsonify({'error': 'No autenticado'}), 401
+            
+            # Verificar que el usuario existe y está activo en la BD
+            conn = sqlite3.connect('gestor_de_tareas.db')
+            cursor = conn.cursor()
+            usuario_id = session.get('usuario_id')
+            
+            cursor.execute('SELECT rol, estado FROM Usuario WHERE id = ?', (usuario_id,))
+            resultado = cursor.fetchone()
+            conn.close()
+            
+            if not resultado:
+                return jsonify({'error': 'Usuario no válido'}), 401
+            
+            rol_usuario, estado_usuario = resultado
+            
+            # Verificar que el usuario está activo
+            if estado_usuario != 'activo':
+                return jsonify({'error': 'Cuenta inactiva'}), 401
+            
+            # Verificar roles
+            if rol_usuario not in allowed_roles:
+                return jsonify({'error': 'No tienes permisos para acceder a este recurso'}), 403
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator

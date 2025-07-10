@@ -54,31 +54,60 @@ if (dashboardLink) {
     ocultarSecciones();
 
     const formularioHTML = `
-      <div class="container mt-4">
-        <h3 class="mb-4">Registrar Nuevo Líder</h3>
-        <form id="formRegistroLider">
-          <div class="row g-3">
-            <div class="col-md-6"><label class="form-label">Nombre</label><input type="text" class="form-control" name="nombre" required></div>
-            <div class="col-md-6"><label class="form-label">Apellido</label><input type="text" class="form-control" name="apellido" required></div>
-            <div class="col-md-6"><label class="form-label">Usuario</label><input type="text" class="form-control" name="usuario" required></div>
-            <div class="col-md-6"><label class="form-label">Contraseña</label><input type="password" class="form-control" name="contrasena" required></div>
-            <div class="col-md-6"><label class="form-label">Documento</label><input type="text" class="form-control" name="documento" required></div>
-            <div class="col-md-6"><label class="form-label">Proyecto</label>
-              <select class="form-select" name="proyecto" id="selectProyecto" required>
-                <option disabled selected value="">Cargando proyectos...</option>
-              </select>
-            </div>
-            <div class="col-md-6"><label class="form-label">Grupo</label><input type="text" name="grupo" id="grupoInput" class="form-control" placeholder="Grupo del proyecto" readonly required></div>
-            <div class="col-md-6"><label class="form-label">Correo Electrónico</label><input type="email" class="form-control" name="correo" required></div>
-            <div class="col-md-6"><label class="form-label">Teléfono</label><input type="text" class="form-control" name="telefono" required></div>
-            <div class="col-md-6"><label class="form-label">Dirección</label><input type="text" class="form-control" name="direccion" required></div>
-          </div>
-          <div class="mt-4">
-            <button type="submit" class="btn btn-success">Registrar</button>
-          </div>
-        </form>
+  <div class="container mt-4">
+    <h3 class="mb-4">Registrar Nuevo Líder</h3>
+    <form id="formRegistroLider">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nombre</label>
+          <input type="text" class="form-control" name="nombre" required minlength="3" maxlength="10" placeholder="Escriba el nombre del lider">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Apellido</label>
+          <input type="text" class="form-control" name="apellido" required minlength="3" maxlength="10" placeholder="Escriba el apellida del lider">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Usuario</label>
+          <input type="text" class="form-control" name="usuario" required minlength="3" maxlength="10" placeholder="Ej: juan123">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Contraseña</label>
+          <input type="password" class="form-control" name="contrasena" required minlength="3" maxlength="10" placeholder="Ingrese una contraseña">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Documento</label>
+          <input type="text" class="form-control" name="documento" required minlength="3" maxlength="10" placeholder="Ej: 123456789">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Proyecto</label>
+          <select class="form-select" name="proyecto" id="selectProyecto" required>
+            <option disabled selected value="">Cargando proyectos...</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Grupo</label>
+          <input type="text" name="grupo" id="grupoInput" class="form-control" placeholder="Grupo del proyecto" readonly required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Correo Electrónico</label>
+          <input type="email" class="form-control" name="correo" required placeholder="Ej: correo@dominio.com">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Teléfono</label>
+          <input type="text" class="form-control" name="telefono" required minlength="3" maxlength="10" placeholder="Ingrese el telefono del lider">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Dirección</label>
+          <input type="text" class="form-control" name="direccion" required minlength="3" maxlength="10" placeholder="Ej: calle 23 #45-67">
+        </div>
       </div>
-    `;
+      <div class="mt-4">
+        <button type="submit" class="btn btn-success">Registrar</button>
+      </div>
+    </form>
+  </div>
+`;
+
 
     mainContent.innerHTML = formularioHTML;
 
@@ -246,7 +275,6 @@ const formRegistro = document.getElementById('formRegistroLider');
             <table class="table table-bordered table-hover">
               <thead class="table-light">
                 <tr>
-                  <th>ID</th>
                   <th>Nombre</th>
                   <th>Usuario</th>
                   <th>Documento</th>
@@ -263,7 +291,6 @@ const formRegistro = document.getElementById('formRegistroLider');
           lideres.forEach(l => {
             tablaHTML += `
               <tr id="fila-lider-${l.id}">
-                <td>${l.id}</td>
                 <td><span class="nombre-lider-clickable" data-id="${l.id}">${l.nombre_completo}</span></td>
                 <td>${l.nombre_usuario}</td>
                 <td>${l.documento}</td>
@@ -382,7 +409,6 @@ if (trabajadoresLink) {
           <table class="table table-bordered table-hover">
             <thead class="table-light">
               <tr>
-                <th>ID</th>
                 <th>Nombre</th>
                 <th>Usuario</th>
                 <th>Documento</th>
@@ -398,7 +424,6 @@ if (trabajadoresLink) {
         trabajadores.forEach(t => {
           tablaHTML += `
             <tr id="fila-trabajador-${t.id}">
-              <td>${t.id}</td>
               <td><span class="nombre-trabajador-clickable" data-id="${t.id}">${t.nombre_completo}</span></td>
               <td>${t.nombre_usuario}</td>
               <td>${t.documento}</td>
@@ -488,19 +513,28 @@ function cargarEventosTrabajadores() {
   });
 
 }
-//Parte del perfil del administrador
 document.getElementById('imagenPerfilInput').addEventListener('change', function (e) {
   const file = e.target.files[0];
   if (file) {
+    const allowedTypes = ['image/png', 'image/jpeg'];
+    
+    if (!allowedTypes.includes(file.type)) {
+      alert('Solo se permiten imágenes PNG o JPG.');
+      this.value = ''; // Limpia el input
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = function (event) {
       document.getElementById('previewImagenPerfil').src = event.target.result;
-      document.querySelector('.user-pill img').src = '/static/avatars/perfil.jpeg?t=' + new Date().getTime();
 
+      // Si deseas actualizar también otra imagen en el layout
+      document.querySelector('.user-pill img').src = event.target.result;
     };
     reader.readAsDataURL(file);
   }
 });
+
 
 document.getElementById('formPerfil').addEventListener('submit', function (e) {
   e.preventDefault();

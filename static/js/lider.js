@@ -83,6 +83,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
+    document.getElementById('archivo').addEventListener('change', function () {
+        const archivo = this.files[0];
+        if (archivo && archivo.size > 5 * 1024 * 1024) { // 5 MB en bytes
+            alert('El archivo supera el límite de 5 MB.');
+            this.value = '';  // Limpiar el input
+        }
+    });
 
     btnProyecto.addEventListener('click', function (e) {
         e.preventDefault();

@@ -101,3 +101,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   };
 });
+document.getElementById('archivo').addEventListener('change', function () {
+      const archivo = this.files[0];
+
+      if (archivo) {
+          const tamañoMaximo = 5 * 1024 * 1024; // 5 MB
+          const tamañoMinimo = 10 * 1024;       // 10 KB
+
+          if (archivo.size > tamañoMaximo) {
+              alert('El archivo supera el límite máximo de 5 MB.');
+              this.value = '';
+          } else if (archivo.size < tamañoMinimo) {
+              alert('El archivo es demasiado pequeño. El mínimo permitido es 10 KB.');
+              this.value = '';
+          }
+      }
+  });

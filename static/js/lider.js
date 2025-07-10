@@ -562,7 +562,9 @@ document.getElementById('btnRefrescarArchivos').addEventListener('click', () => 
     }
 });
 
-document.getElementById('btnEditarPerfil').addEventListener('click', function () {
+document.getElementById('btnEditarPerfil').addEventListener('click', function (e) {
+    e.preventDefault();  // 🔴 SIN ESTO, SE RECARGA LA PÁGINA
+
     fetch('/obtener_perfil_lider')
         .then(response => response.json())
         .then(data => {
@@ -573,12 +575,11 @@ document.getElementById('btnEditarPerfil').addEventListener('click', function ()
                 document.getElementById('perfilDireccion').value = data.direccion || '';
                 document.getElementById('perfilDescripcion').value = data.descripcion || '';
 
-                // Limpiar los campos de contraseña
                 document.getElementById('contraseñaActual').value = '';
                 document.getElementById('nuevaContraseña').value = '';
                 document.getElementById('confirmarContraseña').value = '';
 
-                let modalPerfil = new bootstrap.Modal(document.getElementById('modalPerfilLider'));
+                const modalPerfil = new bootstrap.Modal(document.getElementById('modalPerfilLider'));
                 modalPerfil.show();
             } else {
                 alert('Error al cargar perfil');
@@ -589,6 +590,7 @@ document.getElementById('btnEditarPerfil').addEventListener('click', function ()
             alert('Error al cargar perfil');
         });
 });
+
 
 // Manejar el envío del formulario de perfil
 document.getElementById('formPerfilLider').addEventListener('submit', function (e) {

@@ -690,31 +690,35 @@
 <!-- Informes (DEBE ESTAR FUERA) -->
 <main id="informeContainer" style="display: none;">
     <div class="text-center mb-4">
-        <h2 class="mb-4">Proyecto del {{ grupo_lider }}: 
+        <h2 class="mb-4">Proyecto del {{ grupo_lider }}:
             {% if proyectos %}
                 {{ proyectos[0]['nombre'] }}
             {% else %}
                 Sin proyecto asignado
             {% endif %}
         </h2>
-        <label for="mesSeleccionado" class="form-label">Selecciona un mes:</label>
-        <select id="mesSeleccionado" class="form-select w-auto d-inline-block">
-            <option value="01">Enero</option>
-            <option value="02">Febrero</option>
-            <option value="03">Marzo</option>
-            <option value="04">Abril</option>
-            <option value="05">Mayo</option>
-            <option value="06">Junio</option>
-            <option value="07">Julio</option>
-            <option value="08">Agosto</option>
-            <option value="09">Septiembre</option>
-            <option value="10">Octubre</option>
-            <option value="11">Noviembre</option>
-            <option value="12">Diciembre</option>
-        </select>
-        <button id="btnDescargarInforme" class="btn btn-success ms-2">Descargar Informe</button>
+
+        <form action="{{ url_for('lider.descargar_informes') }}" method="GET" class="d-inline">
+            <label for="mesSeleccionado" class="form-label">Selecciona un mes:</label>
+            <select id="mesSeleccionado" name="mes" class="form-select w-auto d-inline-block">
+                <option value="01">Enero</option>
+                <option value="02">Febrero</option>
+                <option value="03">Marzo</option>
+                <option value="04">Abril</option>
+                <option value="05">Mayo</option>
+                <option value="06">Junio</option>
+                <option value="07">Julio</option>
+                <option value="08">Agosto</option>
+                <option value="09">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option>
+            </select>
+            <button type="submit" class="btn btn-success ms-2">Descargar Informe</button>
+        </form>
     </div>
 </main>
+
 
         <style>
           /* Asegura que el calendario y sus hijos llenen el espacio y no causen scroll innecesario */

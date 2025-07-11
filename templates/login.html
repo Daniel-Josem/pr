@@ -74,5 +74,26 @@
       </script>
     {% endif %}
   {% endwith %}
+  <script>
+// Limpiar caché y storage al llegar al login
+window.onload = function() {
+    if ('caches' in window) {
+        caches.keys().then(function(names) {
+            for (let name of names) caches.delete(name);
+        });
+    }
+    if (window.localStorage) localStorage.clear();
+    if (window.sessionStorage) sessionStorage.clear();
+    document.cookie.split(';').forEach(function(c) {
+        document.cookie = c.trim().split('=')[0] + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+    });
+};
+// Forzar recarga si se vuelve con el botón atrás
+window.addEventListener('pageshow', function (event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
+</script>
 </body>
 </html>

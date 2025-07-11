@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from flask_login import login_user, logout_user, login_required
+from flask_login import login_user, logout_user, login_required, current_user
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.models import Usuario
@@ -40,6 +40,10 @@ def get_db_connection():
 @login_blueprint.route('/login', methods=['GET', 'POST'])
 @nocache
 def login():
+    # Forzar logout y limpieza de sesión cada vez que se accede al login
+    if current_user.is_authenticated:
+        logout_user()
+    session.clear()
     if request.method == 'POST':
         nombre_usuario = request.form['nombre_usuario']
         contrasena = request.form['contrasena']

@@ -4,11 +4,11 @@ import tempfile
 from datetime import datetime
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash,check_password_hash
-import sqlite3
+from app import get_db_connection, nocache
 import os
 from io import BytesIO
 from werkzeug.utils import secure_filename
-from app.session_decorators import lider_required, secure_route
+from app.session_decorators import lider_required, secure_route, nocache
 
 lider = Blueprint('lider', __name__)
 
@@ -17,7 +17,7 @@ def limpiar_archivos_huerfanos():
     Elimina archivos de la carpeta archivos_tareas que ya no están vinculados a ninguna tarea.
     """
     try:
-        conn = sqlite3.connect('gestor_de_tareas.db')
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Obtener todas las rutas de archivos vinculadas a tareas
@@ -47,7 +47,7 @@ def limpiar_archivos_huerfanos():
 @secure_route(allowed_roles=['lider'])
 def crear_tarea():
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     titulo = request.form['titulo']
@@ -97,10 +97,10 @@ def crear_tarea():
 
 # Mostrar tareas
 @lider.route('/lider')
+@nocache
 @secure_route(allowed_roles=['lider'])
 def lideres():
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
 
     grupo_lider = session.get('grupo')
     usuario_sesion = session.get('usuario')
@@ -196,7 +196,7 @@ def editar_tarea():
         # Guardar el nuevo archivo
         archivo.save(os.path.join('static', ruta_archivo))
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     if ruta_archivo:
@@ -223,7 +223,7 @@ def editar_tarea():
 @secure_route(allowed_roles=['lider'])
 def eliminar_tarea(id):
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # Obtener la ruta del archivo para eliminarlo
@@ -257,7 +257,7 @@ def crear_proyecto():
     fecha_fin = request.form['fecha_fin']
     grupo_lider = session.get('grupo')  # Obtener el grupo del líder
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('INSERT INTO Proyecto (nombre, descripcion, grupo, fecha_inicio, fecha_fin) VALUES (?, ?, ?, ?, ?)',
                    (nombre, descripcion, grupo_lider, fecha_inicio, fecha_fin))
@@ -271,7 +271,7 @@ def crear_proyecto():
 @secure_route(allowed_roles=['lider'])
 def eliminar_proyecto(id):
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # Desvincular las tareas del proyecto eliminado
@@ -291,7 +291,7 @@ def asignar_tarea_a_proyecto():
     tarea_id = request.form['tarea_id']
     proyecto_id = request.form['proyecto_id']
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute('UPDATE tareas SET id_proyecto = ? WHERE id = ?', (proyecto_id, tarea_id))
@@ -313,8 +313,8 @@ def ver_notificaciones():
     if not id_lider:
         return jsonify({'error': 'Sesión inválida'}), 401
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
+    conn.row_factory = conn.row_factory
     cur = conn.cursor()
 
     # Obtener notificaciones para el líder
@@ -332,7 +332,7 @@ def marcar_notificacion_leida():
     if not notificacion_id:
         return {'success': False, 'error': 'ID requerido'}, 400
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cur = conn.cursor()
     cur.execute('UPDATE notificaciones SET leido = 1 WHERE id = ?', (notificacion_id,))
     conn.commit()
@@ -345,7 +345,7 @@ def marcar_notificacion_leida():
 @secure_route(allowed_roles=['lider'])
 def obtener_archivos_tarea(tarea_id):
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
@@ -428,8 +428,8 @@ def obtener_perfil_lider():
             print("DEBUG: No hay usuario_id en la sesión")
             return jsonify({'success': False, 'message': 'Sesión expirada'})
 
-        conn = sqlite3.connect('gestor_de_tareas.db')
-        conn.row_factory = sqlite3.Row
+        conn = get_db_connection()
+        conn.row_factory = conn.row_factory
 
         usuario_id = session.get('usuario_id')
         user = conn.execute('SELECT * FROM Usuario WHERE id = ?', (usuario_id,)).fetchone()
@@ -486,8 +486,8 @@ def actualizar_perfil_lider():
         nueva_foto.save(ruta_archivo)
         nombre_foto = nombre_archivo
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
+    conn.row_factory = conn.row_factory
     cursor = conn.cursor()
 
     user = cursor.execute('SELECT * FROM Usuario WHERE id = ?', (usuario_id,)).fetchone()
@@ -533,8 +533,8 @@ def calendario():
     mes = request.args.get('mes', datetime.now().month)
     anio = request.args.get('anio', datetime.now().year)
 
-    conexion = sqlite3.connect('gestor_de_tareas.db')
-    conexion.row_factory = sqlite3.Row
+    conexion = get_db_connection()
+    conexion.row_factory = conexion.row_factory
     cursor = conexion.cursor()
 
     cursor.execute('''
@@ -569,8 +569,8 @@ def descargar_informes():
     else:
         siguiente_mes = f"{año_actual}-{int(mes) + 1:02}-01"
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
+    conn.row_factory = conn.row_factory
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -661,8 +661,10 @@ def descargar_informes():
     else:
         pdf.cell(0, 10, 'No hay tareas asignadas este mes.', ln=True, align='C')
 
-    pdf_bytes = pdf.output(dest='S').encode('latin-1')
-    pdf_output = BytesIO(pdf_bytes)
+    pdf_data = pdf.output(dest='S')
+    if isinstance(pdf_data, str):
+        pdf_data = pdf_data.encode('latin-1')
+    pdf_output = BytesIO(pdf_data)
 
     return send_file(pdf_output, as_attachment=True, download_name='informe_proyecto.pdf', mimetype='application/pdf')
 

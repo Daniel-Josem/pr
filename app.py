@@ -251,6 +251,7 @@ def favicon():
     return current_app.send_static_file('avatars/logo.png')
 
 @app.route('/administrador')
+@nocache
 @secure_route(allowed_roles=['admin'])
 def administrador():
     return render_template('admin.html')
@@ -275,50 +276,6 @@ def logout():
     flash('Has cerrado sesión correctamente.', 'success')
     return response
 
-@app.before_request
-def validate_session():
-    """Valida la sesión en cada request para rutas protegidas"""
-    # Lista de rutas que requieren autenticación
-    protected_routes = [
-        '/administrador', '/lider', '/trabajador', 
-        '/api/', '/actualizar_perfil', '/subir-archivo',
-        '/crear_tarea', '/editar_tarea', '/eliminar_tarea',
-        '/crear_proyecto', '/eliminar_proyecto', '/notificaciones',
-        '/obtener_perfil_lider', '/actualizar_perfil_lider'  # Agregar rutas del líder
-    ]
-    
-    # Verificar si la ruta actual requiere autenticación
-    requires_auth = any(request.path.startswith(route) for route in protected_routes)
-    
-    if requires_auth:
-        # Excluir cleanup-session de la validación
-        if request.path == '/api/cleanup-session':
-            return None
-        
-        # Si hay sesión pero no tiene los campos necesarios, limpiar
-        if 'usuario' in session and 'usuario_id' not in session:
-            session.clear()
-            return redirect(url_for('login.login'))
-        
-        # Si no hay sesión, redirigir a login
-        if 'usuario' not in session:
-            return redirect(url_for('login.login'))
-        
-        # Verificar que el usuario todavía existe y está activo
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute('SELECT estado FROM Usuario WHERE id = ?', (session.get('usuario_id'),))
-            resultado = cursor.fetchone()
-            conn.close()
-            
-            if not resultado or resultado[0] != 'activo':
-                session.clear()
-                flash('Tu sesión ha expirado o tu cuenta está inactiva.', 'error')
-                return redirect(url_for('login.login'))
-        except Exception as e:
-            session.clear()
-            return redirect(url_for('login.login'))
 
 @app.route('/api/validar-sesion', methods=['GET'])
 def validar_sesion():

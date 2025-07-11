@@ -15,12 +15,14 @@ from datetime import datetime
 import uuid
 from werkzeug.utils import secure_filename
 from app.session_decorators import trabajador_required, api_trabajador_required, secure_route, api_multi_role_required
+from app import nocache
 
 trabajador_blueprint = Blueprint('trabajador', __name__)
 
 
 
 @trabajador_blueprint.route('/trabajador')
+@nocache
 @secure_route(allowed_roles=['trabajador'])
 def trabajador():
 

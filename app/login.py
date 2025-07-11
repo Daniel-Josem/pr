@@ -66,6 +66,7 @@ def login():
             }
             session['usuario_id'] = usuario.id
             session['grupo'] = usuario.grupo
+            session['rol'] = usuario.rol  # <-- Asegura que el rol esté en la sesión
             
             # Redirigir según el rol
             if usuario.rol == 'admin':

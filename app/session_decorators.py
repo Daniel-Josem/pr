@@ -123,8 +123,10 @@ def api_trabajador_required(f):
     """Decorador específico para APIs de trabajadores"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        print('DEBUG SESSION al subir archivo:', dict(session))
         if 'usuario' not in session or session.get('rol') != 'trabajador':
-            return jsonify({'error': 'Acceso no autorizado'}), 401
+            print('DEBUG: Acceso no autorizado. Session:', dict(session))
+            return jsonify({'error': 'Acceso no autorizado', 'session': dict(session)}), 401
         return f(*args, **kwargs)
     return decorated_function
 

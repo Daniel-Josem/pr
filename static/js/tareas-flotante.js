@@ -384,7 +384,8 @@ function mostrarPanelDetalleTareaOverlay(id) {
         try {
           const resp = await fetch(`/api/tarea/subir-archivo/${tarea.id}`, {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'include' // Asegura que las cookies de sesión se envíen
           });
           const data = await resp.json();
           

@@ -1,6 +1,6 @@
 from flask import Flask, render_template, session, redirect, url_for, jsonify, request, current_app, flash, make_response
 from flask_login import LoginManager, login_required, current_user, logout_user
-import sqlite3
+from app import get_db_connection
 import os
 from werkzeug.utils import secure_filename
 from app.login import login_blueprint
@@ -78,8 +78,7 @@ app.register_blueprint(recuperar_bp)
 @app.route('/api/tarea/<int:tarea_id>/archivos', methods=['GET'])
 @secure_route(allowed_roles=['admin', 'lider', 'trabajador'])
 def obtener_archivos_tarea(tarea_id):
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute('''
@@ -97,7 +96,7 @@ def obtener_archivos_tarea(tarea_id):
 
 # Crear tablas y agregar columna 'grupo' si no existe
 def crear_tabla_usuario():
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # Crear la tabla Usuario sin la columna grupo
@@ -307,7 +306,7 @@ def validate_session():
         
         # Verificar que el usuario todavía existe y está activo
         try:
-            conn = sqlite3.connect('gestor_de_tareas.db')
+            conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute('SELECT estado FROM Usuario WHERE id = ?', (session.get('usuario_id'),))
             resultado = cursor.fetchone()
@@ -328,7 +327,7 @@ def validar_sesion():
         return jsonify({'valid': False}), 401
     
     try:
-        conn = sqlite3.connect('gestor_de_tareas.db')
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT estado FROM Usuario WHERE id = ?', (session.get('usuario_id'),))
         resultado = cursor.fetchone()
@@ -384,7 +383,7 @@ def handle_enviar_mensaje(data):
     imagen_url = data.get('imagen_url') if tipo == 'imagen' else None
 
     # Guardar en la base de datos
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO mensajes (emisor_id, emisor, receptor_id, mensaje, tipo, imagen_url)

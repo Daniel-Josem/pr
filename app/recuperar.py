@@ -1,5 +1,4 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
-import sqlite3
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -8,6 +7,7 @@ from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
+from app import get_db_connection
 
 # Cargar variables de entorno desde .env
 load_dotenv()
@@ -29,11 +29,6 @@ MAILTRAP_PASSWORD = os.getenv('MAILTRAP_PASSWORD')
 # Elegir cuál usar desde variable de entorno
 USE_GMAIL = os.getenv('USE_GMAIL', 'True').lower() == 'true'
 
-def get_db_connection():
-    """Obtener conexión a la base de datos"""
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def enviar_email_recuperacion(email, token):
     """Enviar email de recuperación usando Gmail o Mailtrap"""

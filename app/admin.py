@@ -1,20 +1,15 @@
+
 from flask import Blueprint, jsonify, request,render_template,send_file,session, current_app
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from fpdf import FPDF
 from unidecode import unidecode
 from datetime import datetime
-import sqlite3
 import os
 from app.session_decorators import api_admin_required, nocache
+from app import get_db_connection
 
 api_blueprint = Blueprint('api', __name__)
-
-#Esto permite que SQLite espere unos segundos antes de lanzar el error de "locked":
-def get_db_connection():
-    conn = sqlite3.connect('gestor_de_tareas.db', timeout=10)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 # --- Crea usuarios de prueba si no existen ---
 def crear_usuarios_prueba():
@@ -556,8 +551,7 @@ def obtener_usuarios_para_chat():
     if not usuario_id:
         return jsonify([])
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # Mostrar solo líderes activos para el trabajador
@@ -580,8 +574,7 @@ def obtener_mensajes_chat_lider(receptor_id):
     emisor_id = session.get('usuario_id')
     if not emisor_id:
         return jsonify([])
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
         SELECT m.*, u.nombre_completo as emisor_nombre, u.rol as emisor_rol
@@ -601,8 +594,7 @@ def obtener_trabajadores_con_chat():
     if not usuario_id:
         return jsonify([])
     
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Obtener el rol y grupo del usuario actual
@@ -644,7 +636,7 @@ def enviar_mensaje_texto():
     if not emisor_id or not receptor_id or not mensaje:
         return jsonify({'error': 'Datos incompletos'}), 400
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT nombre_completo FROM Usuario WHERE id = ?', (emisor_id,))
     emisor_nombre = cursor.fetchone()[0]
@@ -673,7 +665,7 @@ def enviar_imagen():
     imagen.save(ruta_archivo)
     url_imagen = f'/{ruta_archivo}'
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT nombre_completo FROM Usuario WHERE id = ?', (emisor_id,))
     emisor_nombre = cursor.fetchone()[0]
@@ -693,8 +685,7 @@ def obtener_lideres_para_chat():
     if not usuario_id:
         return jsonify([])
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute('''
@@ -709,8 +700,7 @@ def obtener_lideres_para_chat():
 
 @api_blueprint.route('/api/administrador/chat')
 def obtener_info_admin_para_lider():
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, nombre_completo, foto FROM Usuario WHERE rol = 'admin' LIMIT 1")
     admin = cursor.fetchone()
@@ -741,8 +731,7 @@ def descargar_informe_admin():
     else:
         siguiente_mes = f"{anio}-{int(mes)+1:02}-01"
 
-    conn = sqlite3.connect('gestor_de_tareas.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
